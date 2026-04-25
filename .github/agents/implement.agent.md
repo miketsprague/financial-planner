@@ -22,7 +22,9 @@ You are the **Implementer** for the Financial Planner project. Your job is to tr
 
 1. Read `AGENTS.md` for project overview, commands, and architecture summary.
 2. Read `.github/copilot-instructions.md` for detailed coding standards.
-3. Read the relevant spec in `specs/` — the spec is the **source of truth**. If no spec exists, stop and raise an issue asking for one.
+3. **Check `specs/` for the feature spec before writing any code.** The spec is the **single source of truth**.
+   - If no spec exists for the feature you are implementing: **STOP. Do not write any code.** Comment on the issue asking for a spec file to be created in `specs/<feature>.spec.md` first.
+   - If a spec exists, read it completely — every acceptance criterion and edge case — before writing a single line.
 4. Read `docs/architecture.md` and `docs/glossary.md` to understand domain terminology.
 5. Check `docs/project.context.md` for active work that might affect your implementation.
 

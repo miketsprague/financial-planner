@@ -54,19 +54,39 @@ jobs:
               core.setOutput('passed', 'false');
               core.setOutput('message',
                 '⚠️ **Spec / Issue Traceability — FAIL**\n\n' +
-                'PR body does not reference a spec file (`specs/`) or a linked issue (`#123`).\n' +
-                'Agent PRs must be traceable to a spec or issue.');
-            } else if (!hasSummary) {
+                'PR body does not reference a spec file (`specs/`) or a linked issue (`#123`).\n\n' +
+                'Every agent PR must be traceable to a spec in `specs/` **or** a GitHub issue.\n' +
+                'Create a spec file first (`specs/<feature>.spec.md`), then re-run this check.');
+              return;
+            }
+
+            if (!hasSummary) {
               core.setOutput('passed', 'false');
               core.setOutput('message',
                 '⚠️ **Spec / Issue Traceability — FAIL**\n\n' +
                 'PR body is too brief. Please add a meaningful summary of the changes and their intent.');
-            } else {
-              core.setOutput('passed', 'true');
-              core.setOutput('message',
-                '✅ **Spec / Issue Traceability — PASS**\n\n' +
-                'PR body references a spec file or issue.');
+              return;
             }
+
+            // If the PR body mentions specs/, verify at least one spec file actually exists.
+            let specFileWarning = '';
+            if (referencesSpec) {
+              const { execSync } = require('child_process');
+              const specMatches = [...body.matchAll(/specs\/[\w-]+\.spec\.md/gi)].map(m => m[0]);
+              const missingSpecs = specMatches.filter(p => {
+                try { require('fs').accessSync(p); return false; } catch { return true; }
+              });
+              if (specMatches.length > 0 && missingSpecs.length > 0) {
+                specFileWarning = '\n\n> ⚠️ Referenced spec file(s) not found in repo: ' +
+                  missingSpecs.map(p => '`' + p + '`').join(', ') +
+                  '. Create the spec file before merging.';
+              }
+            }
+
+            core.setOutput('passed', 'true');
+            core.setOutput('message',
+              '✅ **Spec / Issue Traceability — PASS**\n\n' +
+              'PR body references a spec file or issue.' + specFileWarning);
 
       # ── Step 2: Run Tests with Coverage ─────────────────────────────────────
       - name: Run tests with coverage
