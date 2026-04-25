@@ -1,0 +1,32 @@
+name: Request Copilot Code Review
+
+# Automatically requests a Copilot code review when a PR is opened or marked
+# ready for review.
+#
+# Alternative: Enable automatic Copilot review in repository settings at
+#   Settings > Code Review > Copilot code review
+# That approach requires no Action and is the recommended long-term solution.
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+    branches: [main]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  request-review:
+    name: Add Copilot as Reviewer
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request Copilot code review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --add-reviewer "copilot" \
+            && echo "✅ Copilot added as reviewer on PR #${PR_NUMBER}" \
+            || echo "⚠️ Could not add copilot as reviewer (may already be configured via repo settings or the app is not installed). See: Settings > Code Review > Copilot code review"

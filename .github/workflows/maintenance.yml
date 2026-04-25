@@ -1,0 +1,224 @@
+name: Scheduled Maintenance
+
+# Weekly scheduled workflow (every Monday at 09:00 UTC) that creates
+# well-scoped maintenance issues for agents to pick up.
+#
+# Issues created:
+#   1. Dependency audit       — review Dependabot / npm audit findings
+#   2. Test gap analysis      — identify and fill coverage gaps
+#   3. Tech debt scan         — unused exports, `any` types, dead code
+#
+# Each issue is deduplicated: if an open issue with the same title already
+# exists it will not be created again.
+#
+# Can also be triggered manually via workflow_dispatch for ad-hoc runs.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Every Monday at 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  maintenance-issues:
+    name: Create Weekly Maintenance Issues
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or skip maintenance issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            /**
+             * Creates an issue if no open issue with the same title already exists.
+             */
+            async function createIfAbsent({ title, body, labels, assignees }) {
+              // Search for an open issue with this exact title
+              const { data: existing } = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: labels.join(','),
+                per_page: 50,
+              });
+
+              const duplicate = existing.find(i => i.title === title);
+              if (duplicate) {
+                core.info(`Skipping "${title}" — open issue #${duplicate.number} already exists.`);
+                return;
+              }
+
+              // Ensure all labels exist
+              for (const label of labels) {
+                try {
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label,
+                    color: labelColour(label),
+                    description: labelDescription(label),
+                  });
+                } catch (e) {
+                  // 422 = label already exists — expected and safe to ignore
+                  if (e.status !== 422) core.warning(`Could not create label '${label}': ${e.message}`);
+                }
+              }
+
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels,
+                assignees,
+              });
+              core.info(`Created issue #${issue.data.number}: "${title}"`);
+            }
+
+            function labelColour(name) {
+              const map = {
+                'maintenance': 'bfd4f2',
+                'dependencies': '0075ca',
+                'testing': 'e4e669',
+                'tech-debt': 'd93f0b',
+                'docs': '0075ca',
+              };
+              return map[name] ?? 'cccccc';
+            }
+
+            function labelDescription(name) {
+              const map = {
+                'maintenance': 'Routine maintenance and housekeeping',
+                'dependencies': 'Dependency updates and security patches',
+                'testing': 'Test coverage and quality improvements',
+                'tech-debt': 'Technical debt cleanup',
+                'docs': 'Documentation improvements or additions',
+              };
+              return map[name] ?? '';
+            }
+
+            const week = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+            // ── 1. Dependency Audit ───────────────────────────────────────────
+            await createIfAbsent({
+              title: 'maintenance: Weekly dependency audit',
+              body: [
+                '## Weekly Dependency Audit',
+                '',
+                `Scheduled maintenance issue created on ${week}.`,
+                '',
+                '## Task for Agent',
+                '',
+                '@copilot Please audit the project dependencies and report any issues.',
+                '',
+                '### Checklist',
+                '',
+                '- [ ] Run `npm audit` and review all findings',
+                '- [ ] Check `package.json` against the GitHub Advisory Database for known CVEs',
+                '- [ ] Review open Dependabot alerts (if any) and assess upgrade risk',
+                '- [ ] Check for packages with unusually broad permissions (`postinstall` scripts)',
+                '- [ ] Verify GitHub Actions in `.github/workflows/` are pinned to commit SHAs',
+                '- [ ] Flag any `high` or `critical` vulnerabilities as a priority for immediate patching',
+                '',
+                '### Acceptance Criteria',
+                '',
+                '- All `npm audit` findings are triaged with a decision: fix, accept, or defer',
+                '- Any `critical` or `high` CVEs result in a follow-up PR or linked issue',
+                '- Dependabot alerts are reviewed and actioned',
+                '',
+                '---',
+                '_Auto-created by the [Scheduled Maintenance](.github/workflows/maintenance.yml) workflow._',
+              ].join('\n'),
+              labels: ['maintenance', 'dependencies'],
+              assignees: ['copilot'],
+            });
+
+            // ── 2. Test Gap Analysis ──────────────────────────────────────────
+            await createIfAbsent({
+              title: 'maintenance: Weekly test gap analysis',
+              body: [
+                '## Weekly Test Gap Analysis',
+                '',
+                `Scheduled maintenance issue created on ${week}.`,
+                '',
+                '## Task for Agent',
+                '',
+                '@copilot Please analyse the current test coverage and identify gaps.',
+                '',
+                '### How to Run',
+                '',
+                '```bash',
+                'npm run test:coverage',
+                '```',
+                '',
+                'Review the HTML report in `coverage/` or the `coverage/coverage-summary.json` output.',
+                '',
+                '### Checklist',
+                '',
+                '- [ ] Run `npm run test:coverage` and review the output',
+                '- [ ] Identify any `src/lib/` functions below 100% branch coverage',
+                '- [ ] Identify any React components with no tests',
+                '- [ ] List uncovered edge cases (negative values, boundary conditions, error paths)',
+                '- [ ] Open targeted follow-up issues for the most impactful coverage gaps',
+                '- [ ] Verify that all new code since the last release has corresponding tests',
+                '',
+                '### Acceptance Criteria',
+                '',
+                '- `src/lib/` pure functions achieve ≥ 100% branch coverage',
+                '- Overall line coverage is ≥ 80%',
+                '- Any gap below these thresholds has a follow-up issue or PR',
+                '',
+                '---',
+                '_Auto-created by the [Scheduled Maintenance](.github/workflows/maintenance.yml) workflow._',
+              ].join('\n'),
+              labels: ['maintenance', 'testing'],
+              assignees: ['copilot'],
+            });
+
+            // ── 3. Tech Debt Scan ─────────────────────────────────────────────
+            await createIfAbsent({
+              title: 'maintenance: Weekly tech debt scan',
+              body: [
+                '## Weekly Tech Debt Scan',
+                '',
+                `Scheduled maintenance issue created on ${week}.`,
+                '',
+                '## Task for Agent',
+                '',
+                '@copilot Please scan the codebase for tech debt and produce a prioritised report.',
+                '',
+                '### Areas to Inspect',
+                '',
+                '#### TypeScript Hygiene',
+                '- [ ] Search for `any` types — replace with `unknown` + type guards where possible',
+                '- [ ] Search for `@ts-ignore` comments — confirm each has an explanatory note',
+                '- [ ] Check for missing return types on exported functions',
+                '',
+                '#### Dead Code',
+                '- [ ] Identify exported symbols that are never imported',
+                '- [ ] Find commented-out code blocks that should be removed',
+                '- [ ] Check for unused `import` statements (ESLint should catch most; verify manually)',
+                '',
+                '#### Error Handling',
+                '- [ ] Identify `try/catch` blocks that silently swallow errors',
+                '- [ ] Verify financial calculations handle `NaN`, `Infinity`, and edge-case inputs gracefully',
+                '- [ ] Check that user-facing error states are shown in the UI (not just logged)',
+                '',
+                '#### Architecture Compliance',
+                '- [ ] Confirm no business logic has crept into React components (should be in `src/lib/`)',
+                '- [ ] Confirm no hardcoded locale strings (currency symbols, date formats) in components',
+                '- [ ] Confirm `"use client"` boundaries are as deep as possible in the component tree',
+                '',
+                '### Output',
+                '',
+                'Produce a prioritised list of findings, grouped by category.',
+                'For each finding: **file & line**, **description**, **suggested fix**, **effort estimate** (S/M/L).',
+                'Open a follow-up issue for any finding that requires a dedicated PR.',
+                '',
+                '---',
+                '_Auto-created by the [Scheduled Maintenance](.github/workflows/maintenance.yml) workflow._',
+              ].join('\n'),
+              labels: ['maintenance', 'tech-debt'],
+              assignees: ['copilot'],
+            });
