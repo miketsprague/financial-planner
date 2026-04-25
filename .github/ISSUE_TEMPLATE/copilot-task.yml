@@ -4,8 +4,6 @@ title: "T: "
 labels:
   - "copilot"
   - "agent-task"
-assignees:
-  - "copilot"
 body:
   - type: markdown
     attributes:
