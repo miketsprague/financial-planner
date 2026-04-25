@@ -1,0 +1,213 @@
+name: Agent Quality Gate
+
+# Extra scrutiny for PRs created by GitHub Copilot (branches matching copilot/**).
+# Checks:
+#   1. PR body references a spec file or linked issue (traceability)
+#   2. Full test suite runs with coverage
+#   3. Coverage summary posted as a PR comment
+#   4. If coverage drops below threshold, adds 'needs-attention' label
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  # Minimum line-coverage percentage before the 'needs-attention' label is added
+  COVERAGE_THRESHOLD: "80"
+
+jobs:
+  quality-gate:
+    name: Agent PR Quality Gate
+    # Only run for PRs opened from copilot/* branches
+    if: startsWith(github.head_ref, 'copilot/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm install
+
+      # ── Step 1: Spec / Issue Traceability Check ─────────────────────────────
+      - name: Check PR body references spec or issue
+        id: spec-check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+
+            const referencesSpec  = /specs\//i.test(body);
+            const referencesIssue = /#\d+/.test(body);
+            const hasSummary      = body.trim().length > 100;
+
+            if (!referencesSpec && !referencesIssue) {
+              core.setOutput('passed', 'false');
+              core.setOutput('message',
+                '⚠️ **Spec / Issue Traceability — FAIL**\n\n' +
+                'PR body does not reference a spec file (`specs/`) or a linked issue (`#123`).\n' +
+                'Agent PRs must be traceable to a spec or issue.');
+            } else if (!hasSummary) {
+              core.setOutput('passed', 'false');
+              core.setOutput('message',
+                '⚠️ **Spec / Issue Traceability — FAIL**\n\n' +
+                'PR body is too brief. Please add a meaningful summary of the changes and their intent.');
+            } else {
+              core.setOutput('passed', 'true');
+              core.setOutput('message',
+                '✅ **Spec / Issue Traceability — PASS**\n\n' +
+                'PR body references a spec file or issue.');
+            }
+
+      # ── Step 2: Run Tests with Coverage ─────────────────────────────────────
+      - name: Run tests with coverage
+        id: test
+        run: npm run test:coverage
+        continue-on-error: true
+
+      # ── Step 3: Parse Coverage Summary ──────────────────────────────────────
+      - name: Parse coverage summary
+        id: coverage
+        env:
+          COVERAGE_THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
+        run: |
+          SUMMARY="coverage/coverage-summary.json"
+          if [ -f "$SUMMARY" ]; then
+            node -e "
+              const c = require('./$SUMMARY');
+              const t = c.total ?? {};
+              const get = (k) => String(t[k]?.pct ?? 'N/A');
+              const threshold = Number(process.env.COVERAGE_THRESHOLD ?? 80);
+              const linesPct = t.lines?.pct;
+              const low = typeof linesPct === 'number' && linesPct < threshold;
+              const out = [
+                'lines='        + get('lines'),
+                'branches='     + get('branches'),
+                'functions='    + get('functions'),
+                'statements='   + get('statements'),
+                'low_coverage=' + (low ? 'true' : 'false'),
+              ].join('\n');
+              require('fs').appendFileSync(process.env.GITHUB_OUTPUT, out + '\n');
+            " || {
+              printf 'lines=N/A\nbranches=N/A\nfunctions=N/A\nstatements=N/A\nlow_coverage=false\n' >> "$GITHUB_OUTPUT"
+            }
+          else
+            printf 'lines=N/A\nbranches=N/A\nfunctions=N/A\nstatements=N/A\nlow_coverage=false\n' >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Step 4: Post Quality Gate Comment ───────────────────────────────────
+      - name: Post quality gate comment
+        uses: actions/github-script@v7
+        env:
+          SPEC_PASSED: ${{ steps.spec-check.outputs.passed }}
+          SPEC_MESSAGE: ${{ steps.spec-check.outputs.message }}
+          TESTS_PASSED: ${{ steps.test.outcome }}
+          LINES: ${{ steps.coverage.outputs.lines }}
+          BRANCHES: ${{ steps.coverage.outputs.branches }}
+          FUNCTIONS: ${{ steps.coverage.outputs.functions }}
+          STATEMENTS: ${{ steps.coverage.outputs.statements }}
+          LOW_COVERAGE: ${{ steps.coverage.outputs.low_coverage }}
+          COVERAGE_THRESHOLD: ${{ env.COVERAGE_THRESHOLD }}
+        with:
+          script: |
+            const specPassed   = process.env.SPEC_PASSED === 'true';
+            const specMessage  = process.env.SPEC_MESSAGE;
+            const testsPassed  = process.env.TESTS_PASSED === 'success';
+            const lines        = process.env.LINES;
+            const branches     = process.env.BRANCHES;
+            const functions    = process.env.FUNCTIONS;
+            const statements   = process.env.STATEMENTS;
+            const lowCoverage  = process.env.LOW_COVERAGE === 'true';
+            const threshold    = process.env.COVERAGE_THRESHOLD || '80';
+
+            const allGreen = specPassed && testsPassed && !lowCoverage;
+            const statusIcon = allGreen ? '✅' : '⚠️';
+
+            const coverageRow = (label, value) =>
+              `| ${label} | ${value === 'N/A' ? value : value + '%'} |`;
+
+            const body = [
+              `## ${statusIcon} Agent Quality Gate`,
+              '',
+              '> This PR was created by a Copilot agent and has been checked by the Agent Quality Gate.',
+              '',
+              '---',
+              '',
+              '### Spec / Issue Traceability',
+              '',
+              specMessage,
+              '',
+              '---',
+              '',
+              '### Test Suite',
+              '',
+              testsPassed
+                ? '✅ **Tests — PASS** — all tests passed.'
+                : '❌ **Tests — FAIL** — one or more tests failed. Check the workflow logs.',
+              '',
+              '---',
+              '',
+              '### Coverage Summary',
+              '',
+              '| Metric | Coverage |',
+              '|--------|----------|',
+              coverageRow('Lines', lines),
+              coverageRow('Branches', branches),
+              coverageRow('Functions', functions),
+              coverageRow('Statements', statements),
+              '',
+              lowCoverage
+                ? `⚠️ **Coverage is below ${threshold}%** — please add tests before merging.`
+                : `✅ **Coverage meets the ${threshold}% threshold.**`,
+              '',
+              '---',
+              '',
+              '_Posted automatically by the [Agent Quality Gate](.github/workflows/agent-quality-gate.yml) workflow._',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      # ── Step 5: Label if coverage is low ────────────────────────────────────
+      - name: Add needs-attention label if coverage is low
+        if: steps.coverage.outputs.low_coverage == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Ensure the label exists before applying it
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'needs-attention',
+                color: 'e4e669',
+                description: 'Requires attention before merging',
+              });
+            } catch (e) {
+              // 422 = label already exists — expected and safe to ignore
+              if (e.status !== 422) core.warning(`Could not create 'needs-attention' label: ${e.message}`);
+            }
+
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['needs-attention'],
+              });
+            } catch (e) {
+              core.warning(`Failed to add needs-attention label: ${e.message}`);
+            }

@@ -1,0 +1,147 @@
+name: Agent Dispatch
+
+# Triggered when a PR label is added. Dispatches specialised agent actions
+# based on the label applied:
+#
+#   needs-security-review → posts a security audit prompt as a PR comment
+#   needs-docs-update     → creates a docs-update issue assigned to @copilot
+#   agent-approved        → posts a "ready for merge" confirmation comment
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  # ── 11.2a: Security Review ───────────────────────────────────────────────────
+  security-review:
+    name: Trigger Security Review
+    if: github.event.label.name == 'needs-security-review'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post security review comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: [
+                '## 🔒 Security Review Requested',
+                '',
+                '@copilot Please perform a full security audit of the changes in this PR.',
+                '',
+                '**Guidance:** Follow the checklist in `.github/agents/security.agent.md` and the',
+                'review prompt in `.github/prompts/security-review.prompt.md`.',
+                '',
+                '### OWASP Top 10 Focus Areas (Client-Side)',
+                '',
+                '- **A01 Broken Access Control** — sensitive data in `localStorage` readable by injected scripts?',
+                '- **A02 Cryptographic Failures** — financial data logged or transmitted unencrypted?',
+                '- **A03 Injection** — user input rendered via `dangerouslySetInnerHTML`? Any `eval()` usage?',
+                '- **A04 Insecure Design** — calculations resilient to adversarial inputs (NaN, Infinity, negative values)?',
+                '- **A05 Security Misconfiguration** — hardcoded secrets, CSP headers, debug features in production?',
+                '- **A06 Vulnerable Components** — known CVEs in dependencies? External CDN resources without SRI?',
+                '- **A08 Software Integrity** — GitHub Actions pinned to commit SHAs, not floating tags?',
+                '',
+                '### Input Validation',
+                '- Are all user-controlled inputs type-checked and bounds-validated?',
+                '- Is input sanitised before passing to financial calculations?',
+                '',
+                '### How to Report',
+                'For each finding: **file & line**, **OWASP category**, **severity**',
+                '(`critical` / `high` / `medium` / `low` / `informational`),',
+                '**attack scenario**, and **remediation guidance**.',
+                '',
+                '> ⚠️ Do **not** approve this PR if any `critical` or `high` severity findings remain unresolved.',
+              ].join('\n'),
+            });
+
+  # ── 11.2b: Docs Update ───────────────────────────────────────────────────────
+  docs-update:
+    name: Create Docs Update Issue
+    if: github.event.label.name == 'needs-docs-update'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create docs update issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'docs',
+                color: '0075ca',
+                description: 'Documentation improvements or additions',
+              });
+            } catch (e) {
+              // 422 = label already exists — expected and safe to ignore
+              if (e.status !== 422) core.warning(`Could not create 'docs' label: ${e.message}`);
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `docs: Update documentation for PR #${pr.number}`,
+              body: [
+                '## Documentation Update Required',
+                '',
+                `PR #${pr.number} (${pr.html_url}) has been labelled \`needs-docs-update\`.`,
+                '',
+                `**PR Title:** ${pr.title}`,
+                `**PR Author:** @${pr.user.login}`,
+                '',
+                '## Task for Docs Agent',
+                '',
+                '@copilot Please review the changes in the linked PR and update all documentation',
+                'that is now out of sync.',
+                '',
+                '**Guidance:** Follow `.github/agents/docs.agent.md` and `.github/prompts/update-docs.prompt.md`.',
+                '',
+                '### Checklist',
+                `- [ ] Review the diff in PR #${pr.number} to understand what changed`,
+                '- [ ] Update `README.md` if new features or commands were added',
+                '- [ ] Update `docs/architecture.md` if structure or data flow changed',
+                '- [ ] Update `docs/glossary.md` if new domain terms were introduced',
+                '- [ ] Update `docs/project.context.md` to reflect current project state',
+                '- [ ] Update `docs/project.memory.md` with notable decisions or lessons',
+                '- [ ] Update `docs/tech-stack.md` if new libraries or tools were added',
+                '- [ ] Add/update JSDoc for any new exported functions in `src/lib/`',
+              ].join('\n'),
+              labels: ['docs'],
+              assignees: ['copilot'],
+            });
+
+  # ── 11.2c: Agent Approved ────────────────────────────────────────────────────
+  agent-approved:
+    name: Mark Ready for Merge
+    if: github.event.label.name == 'agent-approved'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post ready-for-merge comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                '## ✅ Agent Review Complete',
+                '',
+                'This PR has been labelled `agent-approved` by a human reviewer.',
+                'All automated agent checks have passed.',
+                '',
+                'This PR is **ready for final human review and merge** once CI passes.',
+                '',
+                '> 📋 Reminder: at least one human approval is required before merging to `main`.',
+              ].join('\n'),
+            });

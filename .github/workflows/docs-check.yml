@@ -1,0 +1,137 @@
+name: Docs Check on Merge
+
+# Triggered on every push to main (i.e. after a PR merges).
+# Checks whether significant source files changed (src/lib/, src/types/, specs/).
+# If they did, creates a docs-update issue assigned to @copilot so documentation
+# is kept in sync with the codebase.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-and-create-issue:
+    name: Check for Documentation Gaps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect significant file changes
+        id: changed
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          # Use the SHA before the push for an accurate diff even on merge commits
+          CHANGED=$(git diff --name-only "$BEFORE_SHA" HEAD 2>/dev/null \
+            || git diff --name-only HEAD~1 HEAD)
+
+          # Identify files in the monitored paths
+          SIGNIFICANT=$(echo "$CHANGED" | grep -E '^(src/lib/|src/types/|specs/)' || true)
+
+          if [ -n "$SIGNIFICANT" ]; then
+            echo "needs_docs=true" >> "$GITHUB_OUTPUT"
+            # Store as newline-delimited list (safe, no user input in run step)
+            {
+              echo "significant_files<<EOF"
+              echo "$SIGNIFICANT"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "needs_docs=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find associated PR and create issue
+        if: steps.changed.outputs.needs_docs == 'true'
+        uses: actions/github-script@v7
+        env:
+          SIGNIFICANT_FILES: ${{ steps.changed.outputs.significant_files }}
+          COMMIT_SHA: ${{ github.sha }}
+        with:
+          script: |
+            const significantFiles = process.env.SIGNIFICANT_FILES || '';
+            const commitSha = process.env.COMMIT_SHA;
+
+            // Ensure the 'docs' label exists
+            try {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'docs',
+                color: '0075ca',
+                description: 'Documentation improvements or additions',
+              });
+            } catch (e) {
+              // 422 = label already exists — expected and safe to ignore
+              if (e.status !== 422) core.warning(`Could not create 'docs' label: ${e.message}`);
+            }
+
+            // Find the PR(s) associated with this commit
+            let prRef = `commit \`${commitSha.slice(0, 7)}\``;
+            let prLink = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${commitSha}`;
+            let prTitle = 'recent changes';
+
+            try {
+              const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: commitSha,
+              });
+              if (prs.length > 0) {
+                const pr = prs[0];
+                prRef = `PR #${pr.number}`;
+                prLink = pr.html_url;
+                prTitle = pr.title;
+              }
+            } catch (e) {
+              core.warning(`Could not fetch associated PRs: ${e.message}`);
+            }
+
+            // Build file list for the issue body
+            const fileList = significantFiles
+              .split('\n')
+              .filter(Boolean)
+              .map(f => `- \`${f}\``)
+              .join('\n');
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `docs: Update documentation after ${prRef}`,
+              body: [
+                '## Documentation Update Required',
+                '',
+                `Significant source files were changed in ${prRef} ([view](${prLink})) and merged to \`main\`.`,
+                'Documentation may be out of sync and needs reviewing.',
+                '',
+                '## Changed Files',
+                '',
+                fileList,
+                '',
+                '## Task for Docs Agent',
+                '',
+                `@copilot Please review the changes in ${prRef} and update all documentation`,
+                'that is now out of sync with the codebase.',
+                '',
+                '**Guidance:** Follow `.github/agents/docs.agent.md` and `.github/prompts/update-docs.prompt.md`.',
+                '',
+                '### Checklist',
+                `- [ ] Review the diff in ${prRef} to understand what changed`,
+                '- [ ] Update `README.md` if new features or commands were added',
+                '- [ ] Update `docs/architecture.md` if structure or data flow changed',
+                '- [ ] Update `docs/glossary.md` if new domain terms were introduced',
+                '- [ ] Update `docs/project.context.md` to reflect current project state',
+                '- [ ] Update `docs/project.memory.md` with notable decisions or lessons',
+                '- [ ] Update `docs/tech-stack.md` if new libraries or tools were added',
+                '- [ ] Add/update JSDoc for any new exported functions in `src/lib/`',
+              ].join('\n'),
+              labels: ['docs'],
+              assignees: ['copilot'],
+            });
+
+            core.info(`Created docs-update issue for ${prRef}`);
