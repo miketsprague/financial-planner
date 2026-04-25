@@ -1,0 +1,104 @@
+name: "✨ Feature Request"
+description: "Propose a new feature. A planning agent will convert this into a spec in specs/."
+title: "feat: "
+labels:
+  - "feature-request"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to propose a new feature.  
+        A planning agent will read this issue and produce a formal spec in `specs/` before any code is written.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Feature Summary"
+      description: "One or two sentences describing the feature."
+      placeholder: "Add an inflation-adjusted withdrawal projection to the Monte Carlo results panel."
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem / Motivation"
+      description: "What problem does this solve? Who is affected and how often?"
+      placeholder: |
+        Users currently see nominal (not real) portfolio values in projections.
+        This is misleading for long time horizons (20–40 years) where inflation significantly
+        erodes purchasing power. UK users planning for retirement need real-terms figures.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: "Proposed Solution"
+      description: "Describe how you think this should work from a user's perspective."
+      placeholder: |
+        - Add a toggle on the results panel: "Show real values (inflation-adjusted)"
+        - When toggled on, all chart values and summary figures are divided by the
+          cumulative inflation factor for that year
+        - Default inflation rate: 2.5% (configurable in settings)
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: "Acceptance Criteria (Draft)"
+      description: "High-level conditions for this feature to be complete. The planning agent will refine these into a formal spec."
+      placeholder: |
+        - User can toggle between nominal and inflation-adjusted values
+        - Both chart and summary table update when toggle is changed
+        - Inflation rate is configurable (default 2.5%)
+        - Works correctly for 1–50 year projections
+    validations:
+      required: false
+
+  - type: textarea
+    id: uk-specifics
+    attributes:
+      label: "UK-Specific Considerations"
+      description: "Any UK-specific rules, terminology, or financial products relevant to this feature."
+      placeholder: |
+        - Use Bank of England CPI as the default inflation reference
+        - Pension drawdown projections should use real terms by default (FCA guidance)
+    validations:
+      required: false
+
+  - type: textarea
+    id: spec-reference
+    attributes:
+      label: "Related Specs / Docs"
+      description: "Links to existing specs or documentation this feature relates to."
+      placeholder: |
+        - Related spec: `specs/monte-carlo-engine.spec.md`
+        - Architecture: `docs/architecture.md`
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Priority"
+      options:
+        - "Low — nice to have"
+        - "Medium — planned for next phase"
+        - "High — blocking other work"
+        - "Critical — must fix now"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "Pre-flight Checklist"
+      options:
+        - label: "I have searched existing issues and this is not a duplicate."
+          required: true
+        - label: "This feature fits the UK-first scope of the project."
+          required: false
+        - label: "I am happy for a planning agent to write the spec from this issue."
+          required: false

@@ -1,0 +1,102 @@
+name: "🤖 Copilot Task"
+description: "A well-scoped task for GitHub Copilot or another AI agent to implement."
+title: "T: "
+labels:
+  - "copilot"
+  - "agent-task"
+assignees:
+  - "copilot"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for tasks you want an AI agent to implement.  
+        Be as specific as possible — vague tasks produce vague results.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Task Description"
+      description: "What needs to be built or changed? Be concrete and specific."
+      placeholder: |
+        Implement the compound interest projection function in `src/lib/calculations.ts`.
+        It should accept principal, annual rate, years, and compounding frequency,
+        and return a yearly breakdown of balance and interest earned.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: "Acceptance Criteria"
+      description: "Bullet-point list of conditions that must be true for this task to be considered done."
+      placeholder: |
+        - [ ] Function `calculateCompoundInterest` is exported from `src/lib/calculations.ts`
+        - [ ] Accepts `principal`, `annualRate`, `years`, `compoundingFrequency` parameters
+        - [ ] Returns a `YearlyProjection[]` array with `year`, `balance`, and `interestEarned` fields
+        - [ ] Pure function — no side effects, no external dependencies
+        - [ ] Unit tests achieve 100% branch coverage
+        - [ ] TypeScript strict mode — no `any` types
+    validations:
+      required: true
+
+  - type: textarea
+    id: spec-reference
+    attributes:
+      label: "Spec / Reference"
+      description: "Link to the spec file in `specs/` or other reference material the agent should read first."
+      placeholder: |
+        - Spec: `specs/compound-interest-calculator.spec.md`
+        - Related: `src/types/index.ts` for shared types
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Context & Background"
+      description: "Any additional context the agent needs — existing patterns to follow, related code, design decisions."
+      placeholder: |
+        - Follow the same pure-function pattern used in `src/lib/monte-carlo.ts`
+        - Use scaled integer arithmetic to avoid floating-point drift (see `docs/glossary.md`)
+        - The UI component that will consume this is `src/components/compound-interest/`
+    validations:
+      required: false
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: "Constraints & Out of Scope"
+      description: "What the agent must NOT do, or explicit boundaries for this task."
+      placeholder: |
+        - Do not modify `src/types/index.ts` — types are already defined
+        - Do not add UI components — this task is logic only
+        - Do not change the function signature once tests are written
+    validations:
+      required: false
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: "Estimated Complexity"
+      description: "How large is this task?"
+      options:
+        - "Small (< 1 hour)"
+        - "Medium (1–4 hours)"
+        - "Large (4–8 hours)"
+        - "XL (needs breaking down)"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "Pre-flight Checklist"
+      description: "Confirm before submitting."
+      options:
+        - label: "I have linked a spec or provided enough detail for an agent to implement without asking questions."
+          required: true
+        - label: "Acceptance criteria are testable and unambiguous."
+          required: true
+        - label: "This task is small enough to complete in a single PR."
+          required: true
