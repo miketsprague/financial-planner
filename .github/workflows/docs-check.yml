@@ -131,7 +131,6 @@ jobs:
                 '- [ ] Add/update JSDoc for any new exported functions in `src/lib/`',
               ].join('\n'),
               labels: ['docs'],
-              assignees: ['copilot'],
             });
 
             core.info(`Created docs-update issue for ${prRef}`);
