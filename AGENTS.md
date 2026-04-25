@@ -115,6 +115,12 @@ User Input → React Component → Custom Hook → src/lib/ (pure calculation) �
 Issue → Planner Agent (spec) → Implementer Agent (code + tests) → Critic + Security Agents (review) → Human approval → Merge
 ```
 
+> **⚠️ Spec-First is Non-Negotiable**
+> No code may be written until a spec file exists in `specs/<feature>.spec.md`.
+> The implementer agent will stop and raise a comment if no spec is present.
+> The Agent Quality Gate CI check will fail if the PR body does not reference `specs/`.
+> See `specs/README.md` for how to write a spec.
+
 ---
 
 ## Specialised Agent Roles
