@@ -20,7 +20,7 @@ Read this file first. Then read `.github/copilot-instructions.md` for detailed c
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Next.js 15 (App Router, static export) |
+| Framework | Next.js (App Router, static export) |
 | Language | TypeScript 5 (strict) |
 | Styling | Tailwind CSS v4 |
 | Charts | Recharts |
