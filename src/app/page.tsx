@@ -40,7 +40,7 @@ export default function Home() {
     if (activePlan) {
       setAssumptions(activePlan.assumptions);
     }
-  }, [activePlanId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activePlanId, setAssumptions]); // eslint-disable-line react-hooks/exhaustive-deps -- activePlan is derived from activePlanId; setAssumptions is stable
 
   function handleInputSubmit(input: QuickStartInput) {
     if (!activePlan) return;

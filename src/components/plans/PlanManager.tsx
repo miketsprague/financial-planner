@@ -124,7 +124,8 @@ export function PlanManager({
                 title={p.duplicate}
                 aria-label={`${p.duplicate} ${plan.name}`}
                 onClick={onDuplicate}
-                className="rounded p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-xs"
+                disabled={plan.id !== activePlanId}
+                className="rounded p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 📋
               </button>
