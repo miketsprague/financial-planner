@@ -1,0 +1,103 @@
+name: "🐛 Bug Report"
+description: "Report a bug. Include enough detail for an agent to reproduce and fix it."
+title: "bug: "
+labels:
+  - "bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to report a bug.  
+        The more detail you provide, the easier it is for an agent (or human) to reproduce and fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "Bug Description"
+      description: "A clear, concise description of what the bug is."
+      placeholder: "The compound interest calculator returns NaN when the annual rate is entered as a percentage (e.g. 5) instead of a decimal (0.05)."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Exact steps to trigger the bug. Be as precise as possible."
+      placeholder: |
+        1. Open the Compound Interest Calculator
+        2. Enter Principal: £10,000
+        3. Enter Annual Rate: 5 (as a percentage, not decimal)
+        4. Enter Years: 10
+        5. Click "Calculate"
+        6. Observe the result
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behaviour
+    attributes:
+      label: "Expected Behaviour"
+      description: "What should happen?"
+      placeholder: "The calculator should interpret '5' as 5% and return a projected balance of approximately £16,289."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behaviour
+    attributes:
+      label: "Actual Behaviour"
+      description: "What actually happens? Include any error messages, console output, or screenshots."
+      placeholder: |
+        The result displays "NaN" for all fields.
+        Console error: `TypeError: Cannot read properties of undefined (reading 'balance')`
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: "Environment"
+      description: "Where did you observe this bug?"
+      placeholder: |
+        - URL: https://miketsprague.github.io/financial-planner/
+        - Browser: Chrome 124 / Safari 17 / Firefox 125
+        - OS: macOS 14 / Windows 11
+        - Device: Desktop / Mobile
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: "Additional Context"
+      description: "Any other information — related issues, suspected cause, affected function in `src/lib/`, etc."
+      placeholder: |
+        - Likely in `src/lib/calculations.ts` — the `calculateCompoundInterest` function
+        - Related to input validation in `src/components/compound-interest/InputForm.tsx`
+        - Similar issue was fixed for the Monte Carlo inputs in PR #42
+    validations:
+      required: false
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: "Severity"
+      description: "How badly does this affect users?"
+      options:
+        - "Low — cosmetic or edge case"
+        - "Medium — feature partially broken"
+        - "High — feature unusable"
+        - "Critical — data loss or security issue"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "Pre-flight Checklist"
+      options:
+        - label: "I have searched existing issues and this is not a duplicate."
+          required: true
+        - label: "I can reliably reproduce this bug."
+          required: false
