@@ -2,7 +2,7 @@ name: Docs Check on Merge
 
 # Triggered on every push to main (i.e. after a PR merges).
 # Checks whether significant source files changed (src/lib/, src/types/, specs/).
-# If they did, creates a docs-update issue assigned to @copilot so documentation
+# If they did, creates a docs-update issue so documentation
 # is kept in sync with the codebase.
 
 on:
@@ -131,7 +131,6 @@ jobs:
                 '- [ ] Add/update JSDoc for any new exported functions in `src/lib/`',
               ].join('\n'),
               labels: ['docs'],
-              assignees: ['copilot'],
             });
 
             core.info(`Created docs-update issue for ${prRef}`);
