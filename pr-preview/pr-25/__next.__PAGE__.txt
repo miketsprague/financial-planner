@@ -1,0 +1,5 @@
+1:"$Sreact.fragment"
+2:I[97367,["/financial-planner/pr-preview/pr-25/_next/static/chunks/0dbhjjzl8qfwv.js"],"OutletBoundary"]
+3:"$Sreact.suspense"
+0:{"rsc":["$","$1","c",{"children":[["$","div",null,{"className":"flex min-h-screen flex-col items-center justify-center p-8","children":["$","main",null,{"className":"flex max-w-2xl flex-col items-center gap-6 text-center","children":[["$","h1",null,{"className":"text-4xl font-bold tracking-tight","children":"Financial Planner"}],["$","p",null,{"className":"text-lg text-zinc-600 dark:text-zinc-400","children":"Long-term financial planning with Monte Carlo simulation, inflation adjustment, and scenario comparison."}],["$","p",null,{"className":"text-sm text-zinc-400","children":"🚧 Under construction — built via agentic development workflows"}]]}]}],null,["$","$L2",null,{"children":["$","$3",null,{"name":"Next.MetadataOutlet","children":"$@4"}]}]]}],"isPartial":false,"staleTime":300,"varyParams":null,"buildId":"LHorA4KuYknnAGSUBbGcP"}
+4:null
