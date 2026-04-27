@@ -1,50 +1,42 @@
-name: PR Preview Deploy
+name: Deploy PR Preview
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
+  pull-requests: write
 
 concurrency:
-  group: pages-preview-${{ github.event.pull_request.number }}
+  group: preview-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy-preview:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
+        if: github.event.action != 'closed'
         with:
           node-version: "22"
           cache: "npm"
 
-      - run: npm install
+      - name: Install dependencies
+        if: github.event.action != 'closed'
+        run: npm install
 
       - name: Build
+        if: github.event.action != 'closed'
         run: npm run build
         env:
-          PAGES_BASE_PATH: /financial-planner
+          PAGES_BASE_PATH: /financial-planner/pr-preview/pr-${{ github.event.pull_request.number }}
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy preview
+        uses: rossjrw/pr-preview-action@v1
         with:
-          path: out
-
-  deploy-preview:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages-preview
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy PR preview
-        id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          preview: true
+          source-dir: ./out/
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
