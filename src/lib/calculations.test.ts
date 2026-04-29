@@ -136,6 +136,7 @@ describe("projectSavings", () => {
 
     const points = projectSavings(input, assumptions);
 
+    // Age 31: 100_000 - 40_000. Age 32: 60_000 - 44_000 inflated withdrawal.
     expect(points.find((p) => p.age === 31)?.balance).toBeCloseTo(60_000);
     expect(points.find((p) => p.age === 32)?.balance).toBeCloseTo(16_000);
   });
