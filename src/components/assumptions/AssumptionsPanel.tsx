@@ -13,7 +13,10 @@ type Props = {
 };
 
 type SliderField = {
-  key: keyof Pick<Assumptions, "inflationRate" | "investmentReturn">;
+  key: keyof Pick<
+    Assumptions,
+    "inflationRate" | "investmentReturn" | "incomeReplacementRatio"
+  >;
   label: string;
   tooltip: string;
   min: number;
@@ -49,6 +52,14 @@ export function AssumptionsPanel({ strings, assumptions, onUpdate, onReset }: Pr
       min: 0,
       max: 0.2,
       step: 0.005,
+    },
+    {
+      key: "incomeReplacementRatio",
+      label: a.incomeReplacementRatio,
+      tooltip: a.incomeReplacementRatioTooltip,
+      min: 0.5,
+      max: 0.8,
+      step: 0.01,
     },
   ];
 
