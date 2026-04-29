@@ -152,9 +152,15 @@ describe("projectSavings", () => {
     };
 
     const points = projectSavings(input, assumptions);
+    const age61Withdrawal = (60_000 * 1.1 * 2) / 3;
+    const age62Withdrawal = (60_000 * 1.1 ** 2 * 2) / 3;
 
-    expect(points.find((p) => p.age === 61)?.balance).toBeCloseTo(56_000);
-    expect(points.find((p) => p.age === 62)?.balance).toBeCloseTo(7_600);
+    expect(points.find((p) => p.age === 61)?.balance).toBeCloseTo(
+      100_000 - age61Withdrawal,
+    );
+    expect(points.find((p) => p.age === 62)?.balance).toBeCloseTo(
+      100_000 - age61Withdrawal - age62Withdrawal,
+    );
   });
 
   it("inflates State Pension before reducing portfolio withdrawals", () => {
@@ -176,9 +182,15 @@ describe("projectSavings", () => {
     };
 
     const points = projectSavings(input, assumptions);
+    const age67Withdrawal = (60_000 * 1.1 * 2) / 3 - 12_000 * 1.1;
+    const age68Withdrawal = (60_000 * 1.1 ** 2 * 2) / 3 - 12_000 * 1.1 ** 2;
 
-    expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(69_200);
-    expect(points.find((p) => p.age === 68)?.balance).toBeCloseTo(35_320);
+    expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(
+      100_000 - age67Withdrawal,
+    );
+    expect(points.find((p) => p.age === 68)?.balance).toBeCloseTo(
+      100_000 - age67Withdrawal - age68Withdrawal,
+    );
   });
 
   it("returns empty array for invalid ages", () => {
