@@ -129,11 +129,33 @@ describe("projectSavings", () => {
     };
 
     const points = projectSavings(input, assumptions);
+    const targetIncome = input.annualIncome * (2 / 3);
+    const balanceAtRetirement = input.currentSavings - targetIncome;
+    const balanceAtStatePensionAge =
+      balanceAtRetirement -
+      (targetIncome - assumptions.annualStatePension);
+    const firstIndexedPension =
+      assumptions.annualStatePension * (1 + assumptions.inflationRate);
+    const balanceAfterOneIndexedYear =
+      balanceAtStatePensionAge - (targetIncome - firstIndexedPension);
+    const secondIndexedPension =
+      assumptions.annualStatePension *
+      Math.pow(1 + assumptions.inflationRate, 2);
+    const balanceAfterTwoIndexedYears =
+      balanceAfterOneIndexedYear - (targetIncome - secondIndexedPension);
 
-    expect(points.find((p) => p.age === 66)?.balance).toBeCloseTo(80_000);
-    expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(70_000);
-    expect(points.find((p) => p.age === 68)?.balance).toBeCloseTo(61_000);
-    expect(points.find((p) => p.age === 69)?.balance).toBeCloseTo(53_100);
+    expect(points.find((p) => p.age === 66)?.balance).toBeCloseTo(
+      balanceAtRetirement,
+    );
+    expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(
+      balanceAtStatePensionAge,
+    );
+    expect(points.find((p) => p.age === 68)?.balance).toBeCloseTo(
+      balanceAfterOneIndexedYear,
+    );
+    expect(points.find((p) => p.age === 69)?.balance).toBeCloseTo(
+      balanceAfterTwoIndexedYears,
+    );
   });
 
   it("grows balance during accumulation phase", () => {
