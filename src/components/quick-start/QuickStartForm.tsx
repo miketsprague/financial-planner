@@ -21,7 +21,7 @@ const fieldKeys: (keyof QuickStartInput)[] = [
   "annualIncome",
 ];
 
-function validateInput(
+function validateQuickStartInput(
   values: QuickStartInput,
   errors: LocaleStrings["quickStart"]["errors"],
 ): FormErrors {
@@ -79,7 +79,7 @@ function parseFormValues(
     annualIncome: Number(values.annualIncome),
   };
 
-  return { input, errors: validateInput(input, errors) };
+  return { input, errors: validateQuickStartInput(input, errors) };
 }
 
 export function QuickStartForm({ strings, initialValues, onSubmit }: Props) {

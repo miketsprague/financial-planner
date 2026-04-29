@@ -11,7 +11,7 @@ describe("QuickStartForm", () => {
     enGB.quickStart.lifeExpectancy,
     enGB.quickStart.currentSavings,
     enGB.quickStart.annualIncome,
-  ])("allows %s to be cleared and retyped without a leading zero", async (label) => {
+  ])("allows %s to be cleared before retyping", async (label) => {
     const user = userEvent.setup();
 
     render(<QuickStartForm strings={enGB} onSubmit={vi.fn()} />);
