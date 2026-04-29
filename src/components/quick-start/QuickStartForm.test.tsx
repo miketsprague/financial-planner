@@ -6,12 +6,12 @@ import { QuickStartForm } from "./QuickStartForm";
 
 describe("QuickStartForm", () => {
   it.each([
-    enGB.quickStart.currentAge,
-    enGB.quickStart.retirementAge,
-    enGB.quickStart.lifeExpectancy,
-    enGB.quickStart.currentSavings,
-    enGB.quickStart.annualIncome,
-  ])("allows %s to be cleared before retyping", async (label) => {
+    { field: "current age", label: enGB.quickStart.currentAge },
+    { field: "retirement age", label: enGB.quickStart.retirementAge },
+    { field: "life expectancy", label: enGB.quickStart.lifeExpectancy },
+    { field: "current savings", label: enGB.quickStart.currentSavings },
+    { field: "annual income", label: enGB.quickStart.annualIncome },
+  ])("allows the $field field to be cleared before retyping", async ({ label }) => {
     const user = userEvent.setup();
 
     render(<QuickStartForm strings={enGB} onSubmit={vi.fn()} />);
