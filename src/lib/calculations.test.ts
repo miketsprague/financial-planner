@@ -121,7 +121,7 @@ describe("projectSavings", () => {
     const assumptions: Assumptions = {
       ...BASE_ASSUMPTIONS,
       inflationRate: 0.1,
-      investmentReturn: 0,
+      investmentReturn: 0.05,
       lifeExpectancy: 69,
       statePensionAge: 67,
       annualStatePension: 10_000,
@@ -129,20 +129,28 @@ describe("projectSavings", () => {
     };
 
     const points = projectSavings(input, assumptions);
-    const targetIncome = input.annualIncome * (2 / 3);
-    const balanceAtRetirement = input.currentSavings - targetIncome;
+    const retirementIncomeReplacementRatio = 2 / 3;
+    const targetIncome =
+      input.annualIncome * retirementIncomeReplacementRatio;
+    const balanceBeforeRetirement =
+      input.currentSavings * (1 + assumptions.investmentReturn);
+    const balanceAtRetirement =
+      balanceBeforeRetirement * (1 + assumptions.investmentReturn) -
+      targetIncome;
     const balanceAtStatePensionAge =
-      balanceAtRetirement -
+      balanceAtRetirement * (1 + assumptions.investmentReturn) -
       (targetIncome - assumptions.annualStatePension);
     const firstIndexedPension =
       assumptions.annualStatePension * (1 + assumptions.inflationRate);
     const balanceAfterOneIndexedYear =
-      balanceAtStatePensionAge - (targetIncome - firstIndexedPension);
+      balanceAtStatePensionAge * (1 + assumptions.investmentReturn) -
+      (targetIncome - firstIndexedPension);
     const secondIndexedPension =
       assumptions.annualStatePension *
       Math.pow(1 + assumptions.inflationRate, 2);
     const balanceAfterTwoIndexedYears =
-      balanceAfterOneIndexedYear - (targetIncome - secondIndexedPension);
+      balanceAfterOneIndexedYear * (1 + assumptions.investmentReturn) -
+      (targetIncome - secondIndexedPension);
 
     expect(points.find((p) => p.age === 66)?.balance).toBeCloseTo(
       balanceAtRetirement,
