@@ -50,6 +50,17 @@ describe("computeAnnualWithdrawal", () => {
     expect(computeAnnualWithdrawal(income, pension)).toBeCloseTo(expected);
   });
 
+  it("increases withdrawals by inflation for later retirement years", () => {
+    const income = 60_000;
+    const pension = 11_502;
+    const baseWithdrawal = Math.max(0, (60_000 * 2) / 3 - 11_502);
+    const expected = baseWithdrawal * 1.025 ** 3;
+
+    expect(computeAnnualWithdrawal(income, pension, 0.025, 3)).toBeCloseTo(
+      expected,
+    );
+  });
+
   it("does not go negative when state pension exceeds target", () => {
     expect(computeAnnualWithdrawal(10_000, 100_000)).toBe(0);
   });
@@ -102,6 +113,31 @@ describe("projectSavings", () => {
     const input: QuickStartInput = { ...BASE_INPUT, currentSavings: 0 };
     const points = projectSavings(input, BASE_ASSUMPTIONS);
     expect(points.every((p) => p.balance >= 0)).toBe(true);
+  });
+
+  it("inflation-adjusts withdrawals for each year after retirement", () => {
+    const input: QuickStartInput = {
+      ...BASE_INPUT,
+      currentAge: 30,
+      retirementAge: 31,
+      lifeExpectancy: 33,
+      currentSavings: 100_000,
+      annualIncome: 60_000,
+    };
+    const assumptions: Assumptions = {
+      ...BASE_ASSUMPTIONS,
+      annualContributionRate: 0,
+      annualStatePension: 0,
+      inflationRate: 0.1,
+      investmentReturn: 0,
+      lifeExpectancy: 33,
+      statePensionAge: 31,
+    };
+
+    const points = projectSavings(input, assumptions);
+
+    expect(points.find((p) => p.age === 31)?.balance).toBeCloseTo(60_000);
+    expect(points.find((p) => p.age === 32)?.balance).toBeCloseTo(16_000);
   });
 
   it("returns empty array for invalid ages", () => {
