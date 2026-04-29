@@ -134,6 +134,53 @@ describe("projectSavings", () => {
     expect(points.every((p) => p.balance >= 0)).toBe(true);
   });
 
+  it("inflates retirement income needs during drawdown", () => {
+    const input: QuickStartInput = {
+      ...BASE_INPUT,
+      currentAge: 60,
+      retirementAge: 61,
+      lifeExpectancy: 62,
+      currentSavings: 100_000,
+      annualIncome: 60_000,
+    };
+    const assumptions: Assumptions = {
+      ...BASE_ASSUMPTIONS,
+      inflationRate: 0.1,
+      investmentReturn: 0,
+      statePensionAge: 99,
+      annualContributionRate: 0,
+    };
+
+    const points = projectSavings(input, assumptions);
+
+    expect(points.find((p) => p.age === 61)?.balance).toBeCloseTo(56_000);
+    expect(points.find((p) => p.age === 62)?.balance).toBeCloseTo(7_600);
+  });
+
+  it("inflates State Pension before reducing portfolio withdrawals", () => {
+    const input: QuickStartInput = {
+      ...BASE_INPUT,
+      currentAge: 66,
+      retirementAge: 67,
+      lifeExpectancy: 68,
+      currentSavings: 100_000,
+      annualIncome: 60_000,
+    };
+    const assumptions: Assumptions = {
+      ...BASE_ASSUMPTIONS,
+      inflationRate: 0.1,
+      investmentReturn: 0,
+      statePensionAge: 67,
+      annualStatePension: 12_000,
+      annualContributionRate: 0,
+    };
+
+    const points = projectSavings(input, assumptions);
+
+    expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(69_200);
+    expect(points.find((p) => p.age === 68)?.balance).toBeCloseTo(35_320);
+  });
+
   it("returns empty array for invalid ages", () => {
     const badInput: QuickStartInput = {
       ...BASE_INPUT,

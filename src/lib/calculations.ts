@@ -35,7 +35,8 @@ export function computeAnnualWithdrawal(
  * Project year-by-year balance from `input.currentAge` to `assumptions.lifeExpectancy`.
  *
  * Accumulation phase: balance grows at `investmentReturn` and receives annual contributions.
- * Drawdown phase: balance shrinks by annual withdrawals (state pension reduces withdrawal need).
+ * Drawdown phase: balance shrinks by inflation-adjusted annual withdrawals
+ * (state pension reduces withdrawal need).
  */
 export function projectSavings(
   input: QuickStartInput,
@@ -49,6 +50,7 @@ export function projectSavings(
   } = input;
 
   const {
+    inflationRate,
     investmentReturn,
     lifeExpectancy,
     statePensionAge,
@@ -87,9 +89,13 @@ export function projectSavings(
         balance = balance * (1 + investmentReturn) + annualContribution;
       } else {
         // Drawdown: calculate withdrawal needed from portfolio
-        const pension = hasStatePension ? annualStatePension : 0;
+        const inflationMultiplier = (1 + inflationRate) ** (age - currentAge);
+        const inflatedAnnualIncome = annualIncome * inflationMultiplier;
+        const pension = hasStatePension
+          ? annualStatePension * inflationMultiplier
+          : 0;
         const withdrawal = computeAnnualWithdrawal(
-          annualIncome,
+          inflatedAnnualIncome,
           pension,
           incomeReplacementRatio,
         );
