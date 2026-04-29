@@ -10,6 +10,7 @@ import { UK_DEFAULTS } from "./defaults";
 import type { QuickStartInput, Assumptions } from "@/types";
 
 const BASE_ASSUMPTIONS: Assumptions = { ...UK_DEFAULTS };
+const RETIREMENT_INCOME_TARGET_RATE = 2 / 3;
 
 const BASE_INPUT: QuickStartInput = {
   currentAge: 30,
@@ -152,8 +153,8 @@ describe("projectSavings", () => {
     };
 
     const points = projectSavings(input, assumptions);
-    const age61Withdrawal = (60_000 * 1.1 * 2) / 3;
-    const age62Withdrawal = (60_000 * 1.1 ** 2 * 2) / 3;
+    const age61Withdrawal = 60_000 * 1.1 * RETIREMENT_INCOME_TARGET_RATE;
+    const age62Withdrawal = 60_000 * 1.1 ** 2 * RETIREMENT_INCOME_TARGET_RATE;
 
     expect(points.find((p) => p.age === 61)?.balance).toBeCloseTo(
       100_000 - age61Withdrawal,
@@ -182,8 +183,10 @@ describe("projectSavings", () => {
     };
 
     const points = projectSavings(input, assumptions);
-    const age67Withdrawal = (60_000 * 1.1 * 2) / 3 - 12_000 * 1.1;
-    const age68Withdrawal = (60_000 * 1.1 ** 2 * 2) / 3 - 12_000 * 1.1 ** 2;
+    const age67Withdrawal =
+      60_000 * 1.1 * RETIREMENT_INCOME_TARGET_RATE - 12_000 * 1.1;
+    const age68Withdrawal =
+      60_000 * 1.1 ** 2 * RETIREMENT_INCOME_TARGET_RATE - 12_000 * 1.1 ** 2;
 
     expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(
       100_000 - age67Withdrawal,
@@ -219,6 +222,7 @@ describe("projectSavings", () => {
     };
     const assumptions: Assumptions = {
       ...BASE_ASSUMPTIONS,
+      inflationRate: 0,
       investmentReturn: 0,
       annualContributionRate: 0,
       statePensionAge: 99,
@@ -228,6 +232,7 @@ describe("projectSavings", () => {
 
     const points = projectSavings(input, assumptions);
 
+    // With 0% inflation: withdrawal = 60_000 × 0.5 = 30_000; balance = 100_000 - 30_000 = 70_000
     expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(70_000);
   });
 });
