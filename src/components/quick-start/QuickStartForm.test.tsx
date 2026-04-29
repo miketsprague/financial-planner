@@ -36,7 +36,7 @@ describe("QuickStartForm", () => {
     expect(screen.getByText(enGB.quickStart.errors.required)).toBeInTheDocument();
   });
 
-  it("submits retyped field values as numbers", async () => {
+  it("submits a retyped current age as a number", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
 
