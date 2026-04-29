@@ -28,6 +28,22 @@ export function computeAnnualWithdrawal(
   return fromPortfolio;
 }
 
+export function computeIndexedStatePension(
+  annualStatePension: number,
+  indexRate: number,
+  yearsSinceStatePensionAge: number,
+): number {
+  if (!isFinite(annualStatePension) || annualStatePension <= 0) return 0;
+  if (!isFinite(yearsSinceStatePensionAge) || yearsSinceStatePensionAge < 0) {
+    return 0;
+  }
+
+  const safeIndexRate = isFinite(indexRate) ? indexRate : 0;
+  return (
+    annualStatePension * Math.pow(1 + safeIndexRate, yearsSinceStatePensionAge)
+  );
+}
+
 /**
  * Project year-by-year balance from `input.currentAge` to `assumptions.lifeExpectancy`.
  *
@@ -46,6 +62,7 @@ export function projectSavings(
   } = input;
 
   const {
+    inflationRate,
     investmentReturn,
     lifeExpectancy,
     statePensionAge,
@@ -82,7 +99,13 @@ export function projectSavings(
       balance = balance * (1 + investmentReturn) + annualContribution;
     } else {
       // Drawdown: calculate withdrawal needed from portfolio
-      const pension = hasStatePension ? annualStatePension : 0;
+      const pension = hasStatePension
+        ? computeIndexedStatePension(
+            annualStatePension,
+            inflationRate,
+            age - statePensionAge,
+          )
+        : 0;
       const withdrawal = computeAnnualWithdrawal(annualIncome, pension);
       balance = balance * (1 + investmentReturn) - withdrawal;
       balance = Math.max(0, balance);

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeAnnualContribution,
+  computeIndexedStatePension,
   computeAnnualWithdrawal,
   getBalanceAtRetirement,
   isFundingSufficient,
@@ -65,6 +66,22 @@ describe("computeAnnualWithdrawal", () => {
   });
 });
 
+describe("computeIndexedStatePension", () => {
+  it("returns the base pension at State Pension age", () => {
+    expect(computeIndexedStatePension(11_502, 0.025, 0)).toBe(11_502);
+  });
+
+  it("compounds the pension by the index rate for later years", () => {
+    expect(computeIndexedStatePension(11_502, 0.025, 23)).toBeCloseTo(
+      11_502 * Math.pow(1.025, 23),
+    );
+  });
+
+  it("returns 0 before State Pension age", () => {
+    expect(computeIndexedStatePension(11_502, 0.025, -1)).toBe(0);
+  });
+});
+
 describe("projectSavings", () => {
   it("returns an array with one entry per year from currentAge to lifeExpectancy", () => {
     const points = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS);
@@ -90,6 +107,33 @@ describe("projectSavings", () => {
       (p) => p.age >= BASE_ASSUMPTIONS.statePensionAge,
     );
     expect(withPension.every((p) => p.hasStatePension)).toBe(true);
+  });
+
+  it("uses an inflation-indexed state pension in later retirement years", () => {
+    const input: QuickStartInput = {
+      ...BASE_INPUT,
+      currentAge: 65,
+      retirementAge: 66,
+      lifeExpectancy: 69,
+      currentSavings: 100_000,
+      annualIncome: 30_000,
+    };
+    const assumptions: Assumptions = {
+      ...BASE_ASSUMPTIONS,
+      inflationRate: 0.1,
+      investmentReturn: 0,
+      lifeExpectancy: 69,
+      statePensionAge: 67,
+      annualStatePension: 10_000,
+      annualContributionRate: 0,
+    };
+
+    const points = projectSavings(input, assumptions);
+
+    expect(points.find((p) => p.age === 66)?.balance).toBeCloseTo(80_000);
+    expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(70_000);
+    expect(points.find((p) => p.age === 68)?.balance).toBeCloseTo(61_000);
+    expect(points.find((p) => p.age === 69)?.balance).toBeCloseTo(53_100);
   });
 
   it("grows balance during accumulation phase", () => {

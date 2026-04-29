@@ -81,3 +81,4 @@ Add a `**Status:**` line at the top of each spec.
 |------|--------|-------|
 | [epic-1-quick-start-onboarding.spec.md](./epic-1-quick-start-onboarding.spec.md) | Implemented | #29 |
 | [quick-start-input-editing.spec.md](./quick-start-input-editing.spec.md) | Implemented | bug: quick start projection input boxes force a leading zero |
+| [state-pension-indexing.spec.md](./state-pension-indexing.spec.md) | Ready | bug: State Pension amount is not indexed for inflation |
