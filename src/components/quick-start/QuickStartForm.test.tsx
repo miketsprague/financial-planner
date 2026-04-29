@@ -35,4 +35,24 @@ describe("QuickStartForm", () => {
 
     expect(screen.getByText(enGB.quickStart.errors.required)).toBeInTheDocument();
   });
+
+  it("submits retyped field values as numbers", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    render(<QuickStartForm strings={enGB} onSubmit={onSubmit} />);
+
+    const input = screen.getByLabelText(enGB.quickStart.currentAge);
+    await user.clear(input);
+    await user.type(input, "35");
+    await user.click(screen.getByRole("button", { name: enGB.quickStart.submit }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      currentAge: 35,
+      retirementAge: 67,
+      lifeExpectancy: 90,
+      currentSavings: 0,
+      annualIncome: 40000,
+    });
+  });
 });

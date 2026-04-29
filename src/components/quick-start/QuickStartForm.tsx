@@ -111,8 +111,8 @@ export function QuickStartForm({ strings, initialValues, onSubmit }: Props) {
     setTouched(allTouched);
     const { input, errors: errs } = parseFormValues(values, qs.errors);
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-    if (input) onSubmit(input);
+    if (input === null || Object.keys(errs).length > 0) return;
+    onSubmit(input);
   }
 
   const fields: Array<{
