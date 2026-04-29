@@ -11,8 +11,20 @@ type Props = {
 };
 
 type FormErrors = Partial<Record<keyof QuickStartInput, string>>;
+type FormValues = Record<keyof QuickStartInput, string>;
 
-function validateForm(values: QuickStartInput, errors: LocaleStrings["quickStart"]["errors"]): FormErrors {
+const fieldKeys: (keyof QuickStartInput)[] = [
+  "currentAge",
+  "retirementAge",
+  "lifeExpectancy",
+  "currentSavings",
+  "annualIncome",
+];
+
+function validateParsedInput(
+  values: QuickStartInput,
+  errors: LocaleStrings["quickStart"]["errors"],
+): FormErrors {
   const errs: FormErrors = {};
 
   if (values.currentAge < 18) errs.currentAge = errors.minAge;
@@ -32,44 +44,75 @@ function validateForm(values: QuickStartInput, errors: LocaleStrings["quickStart
   return errs;
 }
 
+function getInitialFormValues(initialValues?: Partial<QuickStartInput>): FormValues {
+  return {
+    currentAge: String(initialValues?.currentAge ?? 30),
+    retirementAge: String(initialValues?.retirementAge ?? 67),
+    lifeExpectancy: String(initialValues?.lifeExpectancy ?? 90),
+    currentSavings: String(initialValues?.currentSavings ?? 0),
+    annualIncome: String(initialValues?.annualIncome ?? 40000),
+  };
+}
+
+function parseFormValues(
+  values: FormValues,
+  errors: LocaleStrings["quickStart"]["errors"],
+): { input: QuickStartInput | null; errors: FormErrors } {
+  const requiredErrors: FormErrors = {};
+
+  for (const key of fieldKeys) {
+    const value = values[key].trim();
+    if (value === "" || Number.isNaN(Number(value))) {
+      requiredErrors[key] = errors.required;
+    }
+  }
+
+  if (Object.keys(requiredErrors).length > 0) {
+    return { input: null, errors: requiredErrors };
+  }
+
+  const input: QuickStartInput = {
+    currentAge: Number(values.currentAge),
+    retirementAge: Number(values.retirementAge),
+    lifeExpectancy: Number(values.lifeExpectancy),
+    currentSavings: Number(values.currentSavings),
+    annualIncome: Number(values.annualIncome),
+  };
+
+  return { input, errors: validateParsedInput(input, errors) };
+}
+
 export function QuickStartForm({ strings, initialValues, onSubmit }: Props) {
   const qs = strings.quickStart;
 
-  const [values, setValues] = useState<QuickStartInput>({
-    currentAge: initialValues?.currentAge ?? 30,
-    retirementAge: initialValues?.retirementAge ?? 67,
-    lifeExpectancy: initialValues?.lifeExpectancy ?? 90,
-    currentSavings: initialValues?.currentSavings ?? 0,
-    annualIncome: initialValues?.annualIncome ?? 40000,
-  });
+  const [values, setValues] = useState<FormValues>(() => getInitialFormValues(initialValues));
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof QuickStartInput, boolean>>>({});
 
   function handleChange(field: keyof QuickStartInput, raw: string) {
-    const num = raw === "" ? 0 : Number(raw);
-    const next = { ...values, [field]: isNaN(num) ? values[field] : num };
+    const next = { ...values, [field]: raw };
     setValues(next);
     if (touched[field]) {
-      setErrors(validateForm(next, qs.errors));
+      setErrors(parseFormValues(next, qs.errors).errors);
     }
   }
 
   function handleBlur(field: keyof QuickStartInput) {
     setTouched((prev) => ({ ...prev, [field]: true }));
-    setErrors(validateForm(values, qs.errors));
+    setErrors(parseFormValues(values, qs.errors).errors);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const allTouched = Object.fromEntries(
-      (Object.keys(values) as (keyof QuickStartInput)[]).map((k) => [k, true]),
+      fieldKeys.map((k) => [k, true]),
     ) as Record<keyof QuickStartInput, boolean>;
     setTouched(allTouched);
-    const errs = validateForm(values, qs.errors);
+    const { input, errors: errs } = parseFormValues(values, qs.errors);
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-    onSubmit(values);
+    if (input === null || Object.keys(errs).length > 0) return;
+    onSubmit(input);
   }
 
   const fields: Array<{
