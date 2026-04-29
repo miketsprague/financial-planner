@@ -16,16 +16,23 @@ export function computeAnnualContribution(
 /**
  * Compute annual withdrawal needed during retirement.
  * Approximates take-home by assuming income target is 2/3 of pre-retirement income
- * minus any state pension received.
+ * minus any state pension received, then inflation-adjusts for later retirement years.
  */
 export function computeAnnualWithdrawal(
   annualIncome: number,
   statePension: number,
+  inflationRate = 0,
+  yearsSinceRetirement = 0,
 ): number {
   if (!isFinite(annualIncome) || annualIncome <= 0) return 0;
   const target = annualIncome * (2 / 3);
   const fromPortfolio = Math.max(0, target - Math.max(0, statePension));
-  return fromPortfolio;
+  const safeInflationRate = isFinite(inflationRate) ? inflationRate : 0;
+  const safeYearsSinceRetirement =
+    isFinite(yearsSinceRetirement) && yearsSinceRetirement > 0
+      ? yearsSinceRetirement
+      : 0;
+  return fromPortfolio * (1 + safeInflationRate) ** safeYearsSinceRetirement;
 }
 
 /**
@@ -47,6 +54,7 @@ export function projectSavings(
 
   const {
     investmentReturn,
+    inflationRate,
     lifeExpectancy,
     statePensionAge,
     annualStatePension,
@@ -83,7 +91,13 @@ export function projectSavings(
     } else {
       // Drawdown: calculate withdrawal needed from portfolio
       const pension = hasStatePension ? annualStatePension : 0;
-      const withdrawal = computeAnnualWithdrawal(annualIncome, pension);
+      const yearsSinceRetirement = age - retirementAge;
+      const withdrawal = computeAnnualWithdrawal(
+        annualIncome,
+        pension,
+        inflationRate,
+        yearsSinceRetirement,
+      );
       balance = balance * (1 + investmentReturn) - withdrawal;
       balance = Math.max(0, balance);
     }
