@@ -85,6 +85,26 @@ describe("serializePlans / deserializePlans", () => {
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe("Valid");
   });
+
+  it("restores default assumptions for saved plans missing newer fields", () => {
+    const plan = createPlan("Legacy");
+    const legacyAssumptions: Partial<typeof plan.assumptions> = {
+      ...plan.assumptions,
+    };
+    delete legacyAssumptions.incomeReplacementRatio;
+    const raw = JSON.stringify([
+      {
+        ...plan,
+        assumptions: legacyAssumptions,
+      },
+    ]);
+
+    const result = deserializePlans(raw);
+
+    expect(result[0].assumptions.incomeReplacementRatio).toBe(
+      UK_DEFAULTS.incomeReplacementRatio,
+    );
+  });
 });
 
 describe("isPlan", () => {

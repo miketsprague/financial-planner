@@ -44,25 +44,34 @@ describe("computeAnnualContribution", () => {
 });
 
 describe("computeAnnualWithdrawal", () => {
-  it("returns 2/3 of income minus state pension", () => {
+  it("returns configured income replacement amount minus state pension", () => {
     const income = 60_000;
     const pension = 11_502;
-    const expected = Math.max(0, (60_000 * 2) / 3 - 11_502);
-    expect(computeAnnualWithdrawal(income, pension)).toBeCloseTo(expected);
+    const expected = Math.max(0, 60_000 * 0.75 - 11_502);
+    expect(computeAnnualWithdrawal(income, pension, 0.75)).toBeCloseTo(expected);
   });
 
   it("does not go negative when state pension exceeds target", () => {
-    expect(computeAnnualWithdrawal(10_000, 100_000)).toBe(0);
+    expect(computeAnnualWithdrawal(10_000, 100_000, 0.6)).toBe(0);
   });
 
   it("returns 0 for zero income", () => {
-    expect(computeAnnualWithdrawal(0, 0)).toBe(0);
+    expect(computeAnnualWithdrawal(0, 0, 0.6)).toBe(0);
+  });
+
+  it("returns 0 for invalid income replacement ratio", () => {
+    expect(computeAnnualWithdrawal(40_000, 0, -0.1)).toBe(0);
+    expect(computeAnnualWithdrawal(40_000, 0, NaN)).toBe(0);
   });
 
   it("ignores negative state pension", () => {
     const income = 30_000;
-    const target = (30_000 * 2) / 3;
-    expect(computeAnnualWithdrawal(income, -5000)).toBeCloseTo(target);
+    const target = 30_000 * 0.5;
+    expect(computeAnnualWithdrawal(income, -5000, 0.5)).toBeCloseTo(target);
+  });
+
+  it("ignores non-finite state pension", () => {
+    expect(computeAnnualWithdrawal(30_000, NaN, 0.5)).toBeCloseTo(15_000);
   });
 });
 
@@ -87,6 +96,27 @@ describe("projectSavings", () => {
     const points = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS);
     const expectedLength = BASE_ASSUMPTIONS.lifeExpectancy - BASE_INPUT.currentAge + 1;
     expect(points).toHaveLength(expectedLength);
+  });
+
+  it("starts at currentAge with the current savings before growth or contributions", () => {
+    const points = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS);
+
+    expect(points[0]).toMatchObject({
+      age: BASE_INPUT.currentAge,
+      balance: BASE_INPUT.currentSavings,
+      isRetired: false,
+      hasStatePension: false,
+    });
+  });
+
+  it("projects the next age after one year of growth and contributions", () => {
+    const points = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS);
+    const firstProjectedYear = BASE_INPUT.currentSavings * 1.05 + 4_000;
+
+    expect(points[1]).toMatchObject({
+      age: BASE_INPUT.currentAge + 1,
+      balance: firstProjectedYear,
+    });
   });
 
   it("marks ages before retirement as not retired", () => {
@@ -129,14 +159,11 @@ describe("projectSavings", () => {
     };
 
     const points = projectSavings(input, assumptions);
-    const retirementIncomeReplacementRatio = 2 / 3;
     const targetIncome =
-      input.annualIncome * retirementIncomeReplacementRatio;
-    const balanceBeforeRetirement =
-      input.currentSavings * (1 + assumptions.investmentReturn);
+      input.annualIncome * assumptions.incomeReplacementRatio;
+    // age === currentAge (65): no balance update (age > currentAge guard)
     const balanceAtRetirement =
-      balanceBeforeRetirement * (1 + assumptions.investmentReturn) -
-      targetIncome;
+      input.currentSavings * (1 + assumptions.investmentReturn) - targetIncome;
     const balanceAtStatePensionAge =
       balanceAtRetirement * (1 + assumptions.investmentReturn) -
       (targetIncome - assumptions.annualStatePension);
@@ -191,6 +218,29 @@ describe("projectSavings", () => {
     const input: QuickStartInput = { ...BASE_INPUT, currentSavings: 0 };
     const points = projectSavings(input, BASE_ASSUMPTIONS);
     expect(points[0].balance).toBeGreaterThanOrEqual(0);
+  });
+
+  it("uses the configured income replacement ratio during drawdown", () => {
+    const input: QuickStartInput = {
+      ...BASE_INPUT,
+      currentAge: 66,
+      retirementAge: 67,
+      lifeExpectancy: 67,
+      currentSavings: 100_000,
+      annualIncome: 60_000,
+    };
+    const assumptions: Assumptions = {
+      ...BASE_ASSUMPTIONS,
+      investmentReturn: 0,
+      annualContributionRate: 0,
+      statePensionAge: 99,
+      annualStatePension: 0,
+      incomeReplacementRatio: 0.5,
+    };
+
+    const points = projectSavings(input, assumptions);
+
+    expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(70_000);
   });
 });
 

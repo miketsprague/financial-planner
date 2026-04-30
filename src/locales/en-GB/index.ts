@@ -38,6 +38,9 @@ const enGB = {
     investmentReturn: "Investment Return",
     investmentReturnTooltip:
       "Expected annual real return (after inflation) on your portfolio. A diversified global index typically returns 5–7% real over the long run.",
+    incomeReplacementRatio: "Income Replacement",
+    incomeReplacementRatioTooltip:
+      "Share of pre-retirement income you expect to need each year in retirement. A common planning range is 50–80%.",
     lifeExpectancy: "Life Expectancy",
     lifeExpectancyTooltip:
       "The age to which your plan projects. Planning to 90 gives a safety buffer against living longer than average.",

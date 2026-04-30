@@ -15,6 +15,7 @@ export type Assumptions = {
   statePensionAge: number; // age
   annualStatePension: number; // annual amount in locale currency
   annualContributionRate: number; // fraction of income e.g. 0.10
+  incomeReplacementRatio: number; // fraction of pre-retirement income e.g. 0.667
   locale: Locale;
 };
 

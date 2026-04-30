@@ -52,7 +52,10 @@ export function deserializePlans(raw: string): Plan[] {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isPlan);
+    return parsed.filter(isPlan).map((plan) => ({
+      ...plan,
+      assumptions: { ...UK_DEFAULTS, ...plan.assumptions },
+    }));
   } catch {
     return [];
   }

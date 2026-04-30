@@ -15,16 +15,19 @@ export function computeAnnualContribution(
 
 /**
  * Compute annual withdrawal needed during retirement.
- * Approximates take-home by assuming income target is 2/3 of pre-retirement income
+ * Approximates take-home by applying the configured income replacement ratio
  * minus any state pension received.
  */
 export function computeAnnualWithdrawal(
   annualIncome: number,
   statePension: number,
+  incomeReplacementRatio: number,
 ): number {
   if (!isFinite(annualIncome) || annualIncome <= 0) return 0;
-  const target = annualIncome * (2 / 3);
-  const fromPortfolio = Math.max(0, target - Math.max(0, statePension));
+  if (!isFinite(incomeReplacementRatio) || incomeReplacementRatio < 0) return 0;
+  const target = annualIncome * incomeReplacementRatio;
+  const pensionOffset = isFinite(statePension) ? Math.max(0, statePension) : 0;
+  const fromPortfolio = Math.max(0, target - pensionOffset);
   return fromPortfolio;
 }
 
@@ -68,6 +71,7 @@ export function projectSavings(
     statePensionAge,
     annualStatePension,
     annualContributionRate,
+    incomeReplacementRatio,
   } = assumptions;
 
   if (
@@ -94,21 +98,27 @@ export function projectSavings(
     const isRetired = age >= retirementAge;
     const hasStatePension = age >= statePensionAge;
 
-    if (!isRetired) {
-      // Accumulation: grow by return then add contribution
-      balance = balance * (1 + investmentReturn) + annualContribution;
-    } else {
-      // Drawdown: calculate withdrawal needed from portfolio
-      const pension = hasStatePension
-        ? computeIndexedStatePension(
-            annualStatePension,
-            inflationRate,
-            age - statePensionAge,
-          )
-        : 0;
-      const withdrawal = computeAnnualWithdrawal(annualIncome, pension);
-      balance = balance * (1 + investmentReturn) - withdrawal;
-      balance = Math.max(0, balance);
+    if (age > currentAge) {
+      if (!isRetired) {
+        // Accumulation: grow by return then add contribution
+        balance = balance * (1 + investmentReturn) + annualContribution;
+      } else {
+        // Drawdown: calculate withdrawal needed from portfolio
+        const pension = hasStatePension
+          ? computeIndexedStatePension(
+              annualStatePension,
+              inflationRate,
+              age - statePensionAge,
+            )
+          : 0;
+        const withdrawal = computeAnnualWithdrawal(
+          annualIncome,
+          pension,
+          incomeReplacementRatio,
+        );
+        balance = balance * (1 + investmentReturn) - withdrawal;
+        balance = Math.max(0, balance);
+      }
     }
 
     results.push({ age, balance, isRetired, hasStatePension });
