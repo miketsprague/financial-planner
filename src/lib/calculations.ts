@@ -81,19 +81,21 @@ export function projectSavings(
     const isRetired = age >= retirementAge;
     const hasStatePension = age >= statePensionAge;
 
-    if (!isRetired) {
-      // Accumulation: grow by return then add contribution
-      balance = balance * (1 + investmentReturn) + annualContribution;
-    } else {
-      // Drawdown: calculate withdrawal needed from portfolio
-      const pension = hasStatePension ? annualStatePension : 0;
-      const withdrawal = computeAnnualWithdrawal(
-        annualIncome,
-        pension,
-        incomeReplacementRatio,
-      );
-      balance = balance * (1 + investmentReturn) - withdrawal;
-      balance = Math.max(0, balance);
+    if (age > currentAge) {
+      if (!isRetired) {
+        // Accumulation: grow by return then add contribution
+        balance = balance * (1 + investmentReturn) + annualContribution;
+      } else {
+        // Drawdown: calculate withdrawal needed from portfolio
+        const pension = hasStatePension ? annualStatePension : 0;
+        const withdrawal = computeAnnualWithdrawal(
+          annualIncome,
+          pension,
+          incomeReplacementRatio,
+        );
+        balance = balance * (1 + investmentReturn) - withdrawal;
+        balance = Math.max(0, balance);
+      }
     }
 
     results.push({ age, balance, isRetired, hasStatePension });
