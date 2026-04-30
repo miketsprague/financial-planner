@@ -72,6 +72,27 @@ describe("projectSavings", () => {
     expect(points).toHaveLength(expectedLength);
   });
 
+  it("starts at currentAge with the current savings before growth or contributions", () => {
+    const points = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS);
+
+    expect(points[0]).toMatchObject({
+      age: BASE_INPUT.currentAge,
+      balance: BASE_INPUT.currentSavings,
+      isRetired: false,
+      hasStatePension: false,
+    });
+  });
+
+  it("projects the next age after one year of growth and contributions", () => {
+    const points = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS);
+    const firstProjectedYear = BASE_INPUT.currentSavings * 1.05 + 4_000;
+
+    expect(points[1]).toMatchObject({
+      age: BASE_INPUT.currentAge + 1,
+      balance: firstProjectedYear,
+    });
+  });
+
   it("marks ages before retirement as not retired", () => {
     const points = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS);
     const beforeRetirement = points.filter((p) => p.age < BASE_INPUT.retirementAge);
