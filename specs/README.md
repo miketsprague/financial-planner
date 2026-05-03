@@ -81,5 +81,5 @@ Add a `**Status:**` line at the top of each spec.
 |------|--------|-------|
 | [epic-1-quick-start-onboarding.spec.md](./epic-1-quick-start-onboarding.spec.md) | Implemented | #29 |
 | [quick-start-input-editing.spec.md](./quick-start-input-editing.spec.md) | Implemented | bug: quick start projection input boxes force a leading zero |
-| [configurable-income-replacement-ratio.spec.md](./configurable-income-replacement-ratio.spec.md) | Ready | bug: Income replacement ratio (2/3) is hardcoded, not configurable |
+| [configurable-income-replacement-ratio.spec.md](./configurable-income-replacement-ratio.spec.md) | Implemented | bug: Income replacement ratio (2/3) is hardcoded, not configurable |
 | [projection-initial-balance.spec.md](./projection-initial-balance.spec.md) | Ready | bug: Projection chart missing initial balance data point |
