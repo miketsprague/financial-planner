@@ -117,6 +117,7 @@ export default function Home() {
           <div className="flex flex-col gap-8">
             <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm">
               <QuickStartWizard
+                key={activePlanId ?? "no-plan"}
                 strings={strings}
                 activePlanName={activePlan?.name ?? ""}
                 input={activePlan?.input ?? null}

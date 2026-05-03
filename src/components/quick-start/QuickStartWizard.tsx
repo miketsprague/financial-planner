@@ -26,6 +26,9 @@ export function QuickStartWizard({
   onInputSubmit,
   onMakeMoreAccurate,
 }: Props) {
+  // isEditing starts as true for new/empty plans (input === null), false when the
+  // plan already has data.  When switching plans the parent passes a new `key`
+  // so this component is fully remounted and the initial value is correct.
   const [isEditing, setIsEditing] = useState(input === null);
   const qs = strings.quickStart;
 

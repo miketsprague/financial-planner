@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { LocaleStrings } from "@/locales/en-GB";
 import type {
   EmploymentIncome,
@@ -63,12 +64,31 @@ export function IncomeStreamsPanel({
 }: Props) {
   const s = strings.incomeStreams;
 
+  // ── Draft string state ────────────────────────────────────────────────────
+  // Stores raw strings while the user is typing so that clearing or editing a
+  // field mid-entry does not immediately snap back to the stored numeric value
+  // (the same pattern used in QuickStartForm). Values are committed on blur.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+
+  function getDraft(id: string, field: string, canonical: string): string {
+    return drafts[`${id}:${field}`] ?? canonical;
+  }
+  function setDraft(id: string, field: string, raw: string) {
+    setDrafts((prev) => ({ ...prev, [`${id}:${field}`]: raw }));
+  }
+  function clearDraft(id: string, field: string) {
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[`${id}:${field}`];
+      return next;
+    });
+  }
+
   const computedPensionAnnual = computeStatePensionAnnual(
     statePensionConfig.niQualifyingYears,
     statePensionConfig.deferralYears,
   );
-  const computedPensionWeekly =
-    (computedPensionAnnual / 52);
+  const computedPensionWeekly = computedPensionAnnual / 52;
   const effectivePensionAge = statePensionAge + statePensionConfig.deferralYears;
 
   // ── Employment handlers ───────────────────────────────────────────────────
@@ -177,18 +197,17 @@ export function IncomeStreamsPanel({
                         {s.currencyPrefix}
                       </span>
                       <input
-                        type="number"
-                        value={job.annualGrossSalary}
-                        min={0}
-                        step={1_000}
-                        onChange={(e) =>
+                        type="text"
+                        inputMode="numeric"
+                        value={getDraft(job.id, "salary", String(job.annualGrossSalary))}
+                        onChange={(e) => setDraft(job.id, "salary", e.target.value)}
+                        onBlur={(e) => {
+                          const parsed = parseFloat(e.target.value);
                           updateEmployment(job.id, {
-                            annualGrossSalary: Math.max(
-                              0,
-                              parseFloat(e.target.value) || 0,
-                            ),
-                          })
-                        }
+                            annualGrossSalary: isNaN(parsed) ? 0 : Math.max(0, parsed),
+                          });
+                          clearDraft(job.id, "salary");
+                        }}
                         className={INPUT_CLASS}
                         aria-label={s.salary}
                       />
@@ -199,17 +218,21 @@ export function IncomeStreamsPanel({
                   <div>
                     <label className={LABEL_CLASS}>{s.raiseRate} %</label>
                     <input
-                      type="number"
-                      value={(job.annualRaiseRate * 100).toFixed(1)}
-                      min={0}
-                      max={20}
-                      step={0.1}
-                      onChange={(e) =>
+                      type="text"
+                      inputMode="decimal"
+                      value={getDraft(
+                        job.id,
+                        "raiseRate",
+                        String(+(job.annualRaiseRate * 100).toFixed(1)),
+                      )}
+                      onChange={(e) => setDraft(job.id, "raiseRate", e.target.value)}
+                      onBlur={(e) => {
+                        const parsed = parseFloat(e.target.value);
                         updateEmployment(job.id, {
-                          annualRaiseRate:
-                            (parseFloat(e.target.value) || 0) / 100,
-                        })
-                      }
+                          annualRaiseRate: isNaN(parsed) ? 0 : Math.max(0, parsed) / 100,
+                        });
+                        clearDraft(job.id, "raiseRate");
+                      }}
                       className={INPUT_CLASS}
                       aria-label={s.raiseRate}
                     />
@@ -219,16 +242,19 @@ export function IncomeStreamsPanel({
                   <div>
                     <label className={LABEL_CLASS}>{s.startAge}</label>
                     <input
-                      type="number"
-                      value={job.startAge}
-                      min={16}
-                      max={99}
-                      onChange={(e) =>
+                      type="text"
+                      inputMode="numeric"
+                      value={getDraft(job.id, "startAge", String(job.startAge))}
+                      onChange={(e) => setDraft(job.id, "startAge", e.target.value)}
+                      onBlur={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
                         updateEmployment(job.id, {
-                          startAge:
-                            parseInt(e.target.value, 10) || currentAge,
-                        })
-                      }
+                          startAge: isNaN(parsed)
+                            ? currentAge
+                            : Math.max(16, Math.min(99, parsed)),
+                        });
+                        clearDraft(job.id, "startAge");
+                      }}
                       className={INPUT_CLASS}
                       aria-label={s.startAge}
                     />
@@ -238,16 +264,19 @@ export function IncomeStreamsPanel({
                   <div>
                     <label className={LABEL_CLASS}>{s.endAge}</label>
                     <input
-                      type="number"
-                      value={job.endAge}
-                      min={16}
-                      max={99}
-                      onChange={(e) =>
+                      type="text"
+                      inputMode="numeric"
+                      value={getDraft(job.id, "endAge", String(job.endAge))}
+                      onChange={(e) => setDraft(job.id, "endAge", e.target.value)}
+                      onBlur={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
                         updateEmployment(job.id, {
-                          endAge:
-                            parseInt(e.target.value, 10) || retirementAge,
-                        })
-                      }
+                          endAge: isNaN(parsed)
+                            ? retirementAge
+                            : Math.max(16, Math.min(99, parsed)),
+                        });
+                        clearDraft(job.id, "endAge");
+                      }}
                       className={INPUT_CLASS}
                       aria-label={s.endAge}
                     />
@@ -328,20 +357,18 @@ export function IncomeStreamsPanel({
           </label>
           <input
             id="deferral-years"
-            type="number"
-            min={0}
-            max={5}
-            step={1}
-            value={statePensionConfig.deferralYears}
-            onChange={(e) =>
+            type="text"
+            inputMode="numeric"
+            value={getDraft("pension", "deferralYears", String(statePensionConfig.deferralYears))}
+            onChange={(e) => setDraft("pension", "deferralYears", e.target.value)}
+            onBlur={(e) => {
+              const parsed = parseInt(e.target.value, 10);
               onStatePensionChange({
                 ...statePensionConfig,
-                deferralYears: Math.max(
-                  0,
-                  parseInt(e.target.value, 10) || 0,
-                ),
-              })
-            }
+                deferralYears: isNaN(parsed) ? 0 : Math.max(0, Math.min(5, parsed)),
+              });
+              clearDraft("pension", "deferralYears");
+            }}
             className="w-16 text-sm text-right bg-transparent text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 rounded px-1 py-0.5 focus:outline-none focus:border-blue-500"
             aria-label={s.deferralYears}
           />
@@ -367,8 +394,7 @@ export function IncomeStreamsPanel({
               <span>{effectivePensionAge}</span>
             </div>
           )}
-          {statePensionConfig.niQualifyingYears <
-            10 && (
+          {statePensionConfig.niQualifyingYears < 10 && (
             <p className="text-amber-600 dark:text-amber-400 mt-0.5">
               Below 10 qualifying years — no entitlement
             </p>
@@ -453,18 +479,17 @@ export function IncomeStreamsPanel({
                         {s.currencyPrefix}
                       </span>
                       <input
-                        type="number"
-                        value={stream.annualAmount}
-                        min={0}
-                        step={500}
-                        onChange={(e) =>
+                        type="text"
+                        inputMode="numeric"
+                        value={getDraft(stream.id, "amount", String(stream.annualAmount))}
+                        onChange={(e) => setDraft(stream.id, "amount", e.target.value)}
+                        onBlur={(e) => {
+                          const parsed = parseFloat(e.target.value);
                           updateIncomeStream(stream.id, {
-                            annualAmount: Math.max(
-                              0,
-                              parseFloat(e.target.value) || 0,
-                            ),
-                          })
-                        }
+                            annualAmount: isNaN(parsed) ? 0 : Math.max(0, parsed),
+                          });
+                          clearDraft(stream.id, "amount");
+                        }}
                         className={INPUT_CLASS}
                         aria-label={s.streamAmount}
                       />
@@ -477,17 +502,21 @@ export function IncomeStreamsPanel({
                       {s.streamGrowthRate} %
                     </label>
                     <input
-                      type="number"
-                      value={(stream.growthRate * 100).toFixed(1)}
-                      min={0}
-                      max={20}
-                      step={0.1}
-                      onChange={(e) =>
+                      type="text"
+                      inputMode="decimal"
+                      value={getDraft(
+                        stream.id,
+                        "growthRate",
+                        String(+(stream.growthRate * 100).toFixed(1)),
+                      )}
+                      onChange={(e) => setDraft(stream.id, "growthRate", e.target.value)}
+                      onBlur={(e) => {
+                        const parsed = parseFloat(e.target.value);
                         updateIncomeStream(stream.id, {
-                          growthRate:
-                            (parseFloat(e.target.value) || 0) / 100,
-                        })
-                      }
+                          growthRate: isNaN(parsed) ? 0 : Math.max(0, parsed) / 100,
+                        });
+                        clearDraft(stream.id, "growthRate");
+                      }}
                       className={INPUT_CLASS}
                       aria-label={s.streamGrowthRate}
                     />
@@ -497,35 +526,50 @@ export function IncomeStreamsPanel({
                   <div>
                     <label className={LABEL_CLASS}>{s.streamStartAge}</label>
                     <input
-                      type="number"
-                      value={stream.startAge}
-                      min={16}
-                      max={99}
-                      onChange={(e) =>
+                      type="text"
+                      inputMode="numeric"
+                      value={getDraft(stream.id, "startAge", String(stream.startAge))}
+                      onChange={(e) => setDraft(stream.id, "startAge", e.target.value)}
+                      onBlur={(e) => {
+                        const parsed = parseInt(e.target.value, 10);
                         updateIncomeStream(stream.id, {
-                          startAge:
-                            parseInt(e.target.value, 10) || retirementAge,
-                        })
-                      }
+                          startAge: isNaN(parsed)
+                            ? retirementAge
+                            : Math.max(16, Math.min(99, parsed)),
+                        });
+                        clearDraft(stream.id, "startAge");
+                      }}
                       className={INPUT_CLASS}
                       aria-label={s.streamStartAge}
                     />
                   </div>
 
-                  {/* End age */}
+                  {/* End age — optional, blank = no end */}
                   <div className="col-span-2">
                     <label className={LABEL_CLASS}>{s.streamEndAge}</label>
                     <input
-                      type="number"
-                      value={stream.endAge ?? ""}
-                      min={16}
-                      max={120}
+                      type="text"
+                      inputMode="numeric"
                       placeholder="No end"
-                      onChange={(e) => {
+                      value={getDraft(
+                        stream.id,
+                        "endAge",
+                        stream.endAge !== null ? String(stream.endAge) : "",
+                      )}
+                      onChange={(e) => setDraft(stream.id, "endAge", e.target.value)}
+                      onBlur={(e) => {
                         const val = e.target.value.trim();
-                        updateIncomeStream(stream.id, {
-                          endAge: val === "" ? null : parseInt(val, 10) || null,
-                        });
+                        if (val === "") {
+                          updateIncomeStream(stream.id, { endAge: null });
+                        } else {
+                          const parsed = parseInt(val, 10);
+                          updateIncomeStream(stream.id, {
+                            endAge: isNaN(parsed)
+                              ? null
+                              : Math.max(16, Math.min(120, parsed)),
+                          });
+                        }
+                        clearDraft(stream.id, "endAge");
                       }}
                       className={INPUT_CLASS}
                       aria-label={s.streamEndAge}
