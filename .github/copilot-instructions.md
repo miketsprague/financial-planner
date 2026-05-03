@@ -137,3 +137,16 @@ src/
 - After implementing a feature, check `docs/project.context.md` to see if it needs updating.
 - Do not modify files in `docs/decisions/` — ADRs are immutable once merged.
 - Run `npm run lint && npm run typecheck && npm run test:run` before marking a task complete.
+
+### Specialised Agent Modes
+
+When invoked in a specific agent mode, load and follow the corresponding persona file:
+
+| Mode | Persona File | When to Use |
+|------|-------------|-------------|
+| Implement | `.github/agents/implement.agent.md` | Writing code from a spec |
+| Critic | `.github/agents/critic.agent.md` | Reviewing a PR for logic/spec issues |
+| Security | `.github/agents/security.agent.md` | Reviewing a PR for security vulnerabilities |
+| Docs | `.github/agents/docs.agent.md` | Updating documentation after code changes |
+| TDD | `.github/agents/tdd.agent.md` | Test-driven development workflow |
+| QA Bot | `.github/agents/qa.agent.md` | Browser testing with Playwright on a PR |
