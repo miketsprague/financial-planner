@@ -7,7 +7,7 @@ import {
   serializePlans,
   updatePlan,
 } from "./plans";
-import { UK_DEFAULTS } from "./defaults";
+import { DEFAULT_STATE_PENSION_CONFIG, UK_DEFAULTS } from "./defaults";
 
 describe("createPlan", () => {
   it("creates a plan with the given name", () => {
@@ -37,6 +37,18 @@ describe("createPlan", () => {
     const plan = createPlan("E", { ...UK_DEFAULTS, investmentReturn: 0.07 });
     expect(plan.assumptions.investmentReturn).toBe(0.07);
   });
+
+  it("initialises employmentIncomes as an empty array", () => {
+    expect(createPlan("F").employmentIncomes).toEqual([]);
+  });
+
+  it("initialises incomeStreams as an empty array", () => {
+    expect(createPlan("G").incomeStreams).toEqual([]);
+  });
+
+  it("initialises statePensionConfig with DEFAULT_STATE_PENSION_CONFIG", () => {
+    expect(createPlan("H").statePensionConfig).toEqual(DEFAULT_STATE_PENSION_CONFIG);
+  });
 });
 
 describe("updatePlan", () => {
@@ -59,6 +71,14 @@ describe("duplicatePlan", () => {
     expect(copy.id).not.toBe(plan.id);
     expect(copy.name).toBe("Copy");
     expect(copy.assumptions).toEqual(plan.assumptions);
+  });
+
+  it("copies income stream fields to the duplicate", () => {
+    const plan = createPlan("Original");
+    const copy = duplicatePlan(plan, "Copy");
+    expect(copy.employmentIncomes).toEqual(plan.employmentIncomes);
+    expect(copy.statePensionConfig).toEqual(plan.statePensionConfig);
+    expect(copy.incomeStreams).toEqual(plan.incomeStreams);
   });
 });
 
@@ -104,6 +124,41 @@ describe("serializePlans / deserializePlans", () => {
     expect(result[0].assumptions.incomeReplacementRatio).toBe(
       UK_DEFAULTS.incomeReplacementRatio,
     );
+  });
+
+  it("migrates legacy plans that predate Epic 2 income stream fields", () => {
+    // Simulate a plan saved before Epic 2 — no income stream fields
+    const legacyPlan = {
+      id: "legacy-1",
+      name: "Legacy Plan",
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+      input: null,
+      assumptions: { ...UK_DEFAULTS },
+    };
+
+    const raw = JSON.stringify([legacyPlan]);
+    const result = deserializePlans(raw);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].employmentIncomes).toEqual([]);
+    expect(result[0].incomeStreams).toEqual([]);
+    expect(result[0].statePensionConfig).toEqual(DEFAULT_STATE_PENSION_CONFIG);
+  });
+
+  it("preserves existing Epic 2 fields when deserialising a modern plan", () => {
+    const plan = createPlan("With Income");
+    const modifiedPlan = {
+      ...plan,
+      statePensionConfig: { niQualifyingYears: 20, deferralYears: 2, enabled: true },
+    };
+
+    const raw = JSON.stringify([modifiedPlan]);
+    const result = deserializePlans(raw);
+
+    expect(result[0].statePensionConfig.niQualifyingYears).toBe(20);
+    expect(result[0].statePensionConfig.deferralYears).toBe(2);
+    expect(result[0].statePensionConfig.enabled).toBe(true);
   });
 });
 

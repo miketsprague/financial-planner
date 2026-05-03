@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Assumptions, QuickStartInput } from "@/types";
 import type { LocaleStrings } from "@/locales/en-GB";
+import type { IncomeConfig } from "@/lib/calculations";
 import { QuickStartForm } from "./QuickStartForm";
 import { ProjectionChart } from "./ProjectionChart";
 import { useProjection } from "@/hooks/useProjection";
@@ -12,6 +13,7 @@ type Props = {
   activePlanName: string;
   input: QuickStartInput | null;
   assumptions: Assumptions;
+  incomeConfig?: IncomeConfig;
   onInputSubmit: (input: QuickStartInput) => void;
   onMakeMoreAccurate?: () => void;
 };
@@ -20,13 +22,14 @@ export function QuickStartWizard({
   strings,
   input,
   assumptions,
+  incomeConfig,
   onInputSubmit,
   onMakeMoreAccurate,
 }: Props) {
   const [isEditing, setIsEditing] = useState(input === null);
   const qs = strings.quickStart;
 
-  const dataPoints = useProjection(input, assumptions);
+  const dataPoints = useProjection(input, assumptions, incomeConfig);
 
   function handleSubmit(values: QuickStartInput) {
     onInputSubmit(values);

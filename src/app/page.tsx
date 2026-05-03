@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { getLocaleStrings } from "@/locales";
 import { UK_DEFAULTS } from "@/lib/defaults";
 import { useAssumptions } from "@/hooks/useAssumptions";
@@ -8,7 +8,9 @@ import { usePlans } from "@/hooks/usePlans";
 import { QuickStartWizard } from "@/components/quick-start/QuickStartWizard";
 import { AssumptionsPanel } from "@/components/assumptions/AssumptionsPanel";
 import { PlanManager } from "@/components/plans/PlanManager";
-import type { QuickStartInput } from "@/types";
+import { IncomeStreamsPanel } from "@/components/income/IncomeStreamsPanel";
+import type { EmploymentIncome, IncomeStream, QuickStartInput, StatePensionConfig } from "@/types";
+import type { IncomeConfig } from "@/lib/calculations";
 
 const strings = getLocaleStrings("en-GB");
 
@@ -42,6 +44,16 @@ export default function Home() {
     }
   }, [activePlanId, setAssumptions]); // eslint-disable-line react-hooks/exhaustive-deps -- activePlan is derived from activePlanId; setAssumptions is stable
 
+  // Derive incomeConfig from active plan for the projection
+  const incomeConfig: IncomeConfig | undefined = useMemo(() => {
+    if (!activePlan) return undefined;
+    return {
+      employmentIncomes: activePlan.employmentIncomes,
+      statePensionConfig: activePlan.statePensionConfig,
+      incomeStreams: activePlan.incomeStreams,
+    };
+  }, [activePlan]);
+
   function handleInputSubmit(input: QuickStartInput) {
     if (!activePlan) return;
     const next = { ...assumptions, lifeExpectancy: input.lifeExpectancy };
@@ -66,6 +78,21 @@ export default function Home() {
     if (activePlan) {
       updatePlanData(activePlan.id, { assumptions: { ...UK_DEFAULTS } });
     }
+  }
+
+  function handleEmploymentChange(items: EmploymentIncome[]) {
+    if (!activePlan) return;
+    updatePlanData(activePlan.id, { employmentIncomes: items });
+  }
+
+  function handleStatePensionChange(config: StatePensionConfig) {
+    if (!activePlan) return;
+    updatePlanData(activePlan.id, { statePensionConfig: config });
+  }
+
+  function handleIncomeStreamsChange(streams: IncomeStream[]) {
+    if (!activePlan) return;
+    updatePlanData(activePlan.id, { incomeStreams: streams });
   }
 
   return (
@@ -94,6 +121,7 @@ export default function Home() {
                 activePlanName={activePlan?.name ?? ""}
                 input={activePlan?.input ?? null}
                 assumptions={assumptions}
+                incomeConfig={incomeConfig}
                 onInputSubmit={handleInputSubmit}
               />
             </div>
@@ -122,6 +150,28 @@ export default function Home() {
                 assumptions={assumptions}
                 onUpdate={handleAssumptionUpdate}
                 onReset={handleResetAssumptions}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
+              <IncomeStreamsPanel
+                strings={strings}
+                currentAge={activePlan?.input?.currentAge ?? 30}
+                retirementAge={activePlan?.input?.retirementAge ?? 67}
+                employmentIncomes={activePlan?.employmentIncomes ?? []}
+                statePensionConfig={
+                  activePlan?.statePensionConfig ?? {
+                    niQualifyingYears: 35,
+                    deferralYears: 0,
+                    enabled: true,
+                  }
+                }
+                incomeStreams={activePlan?.incomeStreams ?? []}
+                statePensionAge={assumptions.statePensionAge}
+                locale={assumptions.locale}
+                onEmploymentChange={handleEmploymentChange}
+                onStatePensionChange={handleStatePensionChange}
+                onIncomeStreamsChange={handleIncomeStreamsChange}
               />
             </div>
           </aside>

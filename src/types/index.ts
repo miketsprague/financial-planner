@@ -26,6 +26,46 @@ export type ProjectionDataPoint = {
   hasStatePension: boolean;
 };
 
+/** Preset income stream categories used as display hints. */
+export type IncomeStreamType =
+  | "private-pension"
+  | "rental"
+  | "side-business"
+  | "annuity"
+  | "part-time"
+  | "other";
+
+/** A single employment income source (one job / contract). */
+export type EmploymentIncome = {
+  id: string;
+  name: string;
+  annualGrossSalary: number;
+  annualRaiseRate: number; // fraction e.g. 0.03 for 3%
+  startAge: number;
+  endAge: number;
+  isPreTax: boolean;
+  enabled: boolean;
+};
+
+/** UK State Pension configuration for a plan. */
+export type StatePensionConfig = {
+  niQualifyingYears: number; // 0–35+
+  deferralYears: number;     // 0 = take at state pension age
+  enabled: boolean;
+};
+
+/** A non-employment income stream (rental, annuity, private pension, etc.). */
+export type IncomeStream = {
+  id: string;
+  name: string;
+  type: IncomeStreamType;
+  annualAmount: number;
+  startAge: number;
+  endAge: number | null; // null = no end age
+  growthRate: number;    // fraction e.g. 0.02 for 2%
+  enabled: boolean;
+};
+
 export type Plan = {
   id: string;
   name: string;
@@ -33,4 +73,7 @@ export type Plan = {
   updatedAt: string; // ISO 8601
   input: QuickStartInput | null;
   assumptions: Assumptions;
+  employmentIncomes: EmploymentIncome[];
+  statePensionConfig: StatePensionConfig;
+  incomeStreams: IncomeStream[];
 };
