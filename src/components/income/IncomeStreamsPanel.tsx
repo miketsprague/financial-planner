@@ -9,6 +9,7 @@ import type {
   StatePensionConfig,
 } from "@/types";
 import { computeStatePensionAnnual } from "@/lib/income";
+import { generateId } from "@/lib/id";
 import { formatCurrency, formatPercentage } from "@/lib/formatting";
 
 type Props = {
@@ -24,10 +25,6 @@ type Props = {
   onStatePensionChange: (config: StatePensionConfig) => void;
   onIncomeStreamsChange: (streams: IncomeStream[]) => void;
 };
-
-function generateId(): string {
-  return `inc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-}
 
 const STREAM_TYPES: IncomeStreamType[] = [
   "private-pension",

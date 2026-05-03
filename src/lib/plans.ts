@@ -7,10 +7,7 @@ import type {
   StatePensionConfig,
 } from "@/types";
 import { DEFAULT_STATE_PENSION_CONFIG, UK_DEFAULTS } from "./defaults";
-
-function generateId(): string {
-  return `plan-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
+import { generateId } from "./id";
 
 function now(): string {
   return new Date().toISOString();
