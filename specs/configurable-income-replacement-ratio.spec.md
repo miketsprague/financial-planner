@@ -1,6 +1,6 @@
 # Configurable Income Replacement Ratio
 
-**Status:** Ready
+**Status:** Implemented
 
 ## Background
 
