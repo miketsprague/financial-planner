@@ -83,3 +83,4 @@ Add a `**Status:**` line at the top of each spec.
 | [quick-start-input-editing.spec.md](./quick-start-input-editing.spec.md) | Implemented | bug: quick start projection input boxes force a leading zero |
 | [configurable-income-replacement-ratio.spec.md](./configurable-income-replacement-ratio.spec.md) | Implemented | bug: Income replacement ratio (2/3) is hardcoded, not configurable |
 | [projection-initial-balance.spec.md](./projection-initial-balance.spec.md) | Ready | bug: Projection chart missing initial balance data point |
+| [qa-bot.spec.md](./qa-bot.spec.md) | Implemented | QA bot agent |
