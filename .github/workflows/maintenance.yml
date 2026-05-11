@@ -33,7 +33,7 @@ jobs:
             /**
              * Creates an issue if no open issue with the same title already exists.
              */
-            async function createIfAbsent({ title, body, labels, assignees }) {
+            async function createIfAbsent({ title, body, labels }) {
               // Search for an open issue with this exact title
               const { data: existing } = await github.rest.issues.listForRepo({
                 owner: context.repo.owner,
@@ -71,7 +71,6 @@ jobs:
                 title,
                 body,
                 labels,
-                assignees,
               });
               core.info(`Created issue #${issue.data.number}: "${title}"`);
             }
@@ -131,7 +130,6 @@ jobs:
                 '_Auto-created by the [Scheduled Maintenance](.github/workflows/maintenance.yml) workflow._',
               ].join('\n'),
               labels: ['maintenance', 'dependencies'],
-              assignees: ['copilot'],
             });
 
             // ── 2. Test Gap Analysis ──────────────────────────────────────────
@@ -173,7 +171,6 @@ jobs:
                 '_Auto-created by the [Scheduled Maintenance](.github/workflows/maintenance.yml) workflow._',
               ].join('\n'),
               labels: ['maintenance', 'testing'],
-              assignees: ['copilot'],
             });
 
             // ── 3. Tech Debt Scan ─────────────────────────────────────────────
@@ -220,5 +217,4 @@ jobs:
                 '_Auto-created by the [Scheduled Maintenance](.github/workflows/maintenance.yml) workflow._',
               ].join('\n'),
               labels: ['maintenance', 'tech-debt'],
-              assignees: ['copilot'],
             });
