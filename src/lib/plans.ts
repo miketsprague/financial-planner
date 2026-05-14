@@ -1,9 +1,13 @@
-import type { Assumptions, Plan, QuickStartInput } from "@/types";
-import { UK_DEFAULTS } from "./defaults";
-
-function generateId(): string {
-  return `plan-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
+import type {
+  Assumptions,
+  EmploymentIncome,
+  IncomeStream,
+  Plan,
+  QuickStartInput,
+  StatePensionConfig,
+} from "@/types";
+import { DEFAULT_STATE_PENSION_CONFIG, UK_DEFAULTS } from "./defaults";
+import { generateId } from "./id";
 
 function now(): string {
   return new Date().toISOString();
@@ -30,6 +34,9 @@ export function createPlan(
     updatedAt: ts,
     input,
     assumptions,
+    employmentIncomes: [],
+    statePensionConfig: { ...DEFAULT_STATE_PENSION_CONFIG },
+    incomeStreams: [],
   };
 }
 
@@ -85,6 +92,9 @@ export function serializePlans(plans: Plan[]): string {
  * `Assumptions` field was introduced automatically receive the correct default
  * value (forward-compatible migration pattern).
  *
+ * Epic 2 migration: plans saved before income stream support was added will
+ * receive empty employment/stream arrays and the default State Pension config.
+ *
  * @param raw - Raw JSON string from storage.
  * @returns Array of valid Plans, or an empty array on any parse failure.
  */
@@ -92,10 +102,29 @@ export function deserializePlans(raw: string): Plan[] {
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isPlan).map((plan) => ({
-      ...plan,
-      assumptions: { ...UK_DEFAULTS, ...plan.assumptions },
-    }));
+    return parsed.filter(isPlan).map((plan) => {
+      // plan passed isPlan which only verifies minimal shape.
+      // Cast so we can safely read Epic 2 fields that may be absent
+      // in plans serialised before this feature was deployed.
+      const p = plan as unknown as {
+        employmentIncomes?: EmploymentIncome[];
+        statePensionConfig?: StatePensionConfig;
+        incomeStreams?: IncomeStream[];
+      };
+
+      return {
+        ...plan,
+        assumptions: { ...UK_DEFAULTS, ...plan.assumptions },
+        employmentIncomes: Array.isArray(p.employmentIncomes)
+          ? p.employmentIncomes
+          : [],
+        statePensionConfig: {
+          ...DEFAULT_STATE_PENSION_CONFIG,
+          ...(p.statePensionConfig ?? {}),
+        },
+        incomeStreams: Array.isArray(p.incomeStreams) ? p.incomeStreams : [],
+      };
+    });
   } catch {
     return [];
   }

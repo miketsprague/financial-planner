@@ -5,9 +5,11 @@ import {
   getBalanceAtRetirement,
   isFundingSufficient,
   projectSavings,
+  type IncomeConfig,
 } from "./calculations";
+import { FULL_STATE_PENSION_ANNUAL } from "./income";
 import { UK_DEFAULTS } from "./defaults";
-import type { QuickStartInput, Assumptions } from "@/types";
+import type { Assumptions, EmploymentIncome, IncomeStream, QuickStartInput } from "@/types";
 
 const BASE_ASSUMPTIONS: Assumptions = { ...UK_DEFAULTS };
 const RETIREMENT_INCOME_TARGET_RATE = 2 / 3;
@@ -261,5 +263,150 @@ describe("isFundingSufficient", () => {
   it("returns false for invalid input", () => {
     const bad: QuickStartInput = { ...BASE_INPUT, retirementAge: 20, currentAge: 30 };
     expect(isFundingSufficient(bad, BASE_ASSUMPTIONS)).toBe(false);
+  });
+});
+
+describe("projectSavings with incomeConfig", () => {
+  const JOB: EmploymentIncome = {
+    id: "j1",
+    name: "Job",
+    annualGrossSalary: 40_000,
+    annualRaiseRate: 0,
+    startAge: 30,
+    endAge: 66,
+    isPreTax: true,
+    enabled: true,
+  };
+
+  it("uses employment contributions when a job is active at the current age", () => {
+    const config: IncomeConfig = {
+      employmentIncomes: [JOB],
+      statePensionConfig: { niQualifyingYears: 35, deferralYears: 0, enabled: false },
+      incomeStreams: [],
+    };
+    const points = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS, config);
+    // Year 1: 50,000 × 1.05 + 40,000 × 0.1 = 52,500 + 4,000 = 56,500
+    expect(points[1].balance).toBeCloseTo(50_000 * 1.05 + 4_000);
+  });
+
+  it("falls back to base contribution for ages outside all employment ranges", () => {
+    const lateStartJob: EmploymentIncome = {
+      ...JOB,
+      startAge: 50, // starts well after currentAge=30
+    };
+    const config: IncomeConfig = {
+      employmentIncomes: [lateStartJob],
+      statePensionConfig: { niQualifyingYears: 35, deferralYears: 0, enabled: false },
+      incomeStreams: [],
+    };
+    const points = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS, config);
+    // At age 31, no active job → fall back to annualIncome × contributionRate
+    expect(points[1].balance).toBeCloseTo(50_000 * 1.05 + 4_000);
+  });
+
+  it("overrides annualStatePension using statePensionConfig when enabled", () => {
+    const input: QuickStartInput = {
+      ...BASE_INPUT,
+      currentAge: 65,
+      retirementAge: 66,
+      lifeExpectancy: 67,
+      currentSavings: 100_000,
+      annualIncome: 30_000,
+    };
+    const assumptions: Assumptions = {
+      ...BASE_ASSUMPTIONS,
+      statePensionAge: 66,
+      annualStatePension: 0, // would give no pension if used from assumptions
+      inflationRate: 0,
+      investmentReturn: 0,
+      annualContributionRate: 0,
+    };
+    const config: IncomeConfig = {
+      employmentIncomes: [],
+      statePensionConfig: { niQualifyingYears: 35, deferralYears: 0, enabled: true },
+      incomeStreams: [],
+    };
+
+    const points = projectSavings(input, assumptions, config);
+    // State pension from config: FULL_STATE_PENSION_ANNUAL ≈ 11,502.40
+    const expectedWithdrawal = Math.max(
+      0,
+      30_000 * (2 / 3) - FULL_STATE_PENSION_ANNUAL,
+    );
+    expect(points.find((p) => p.age === 66)?.balance).toBeCloseTo(
+      100_000 - expectedWithdrawal,
+      0,
+    );
+  });
+
+  it("defers state pension start when deferralYears > 0 (reflected in hasStatePension)", () => {
+    const input: QuickStartInput = {
+      ...BASE_INPUT,
+      currentAge: 65,
+      retirementAge: 66,
+      lifeExpectancy: 70,
+    };
+    const assumptions: Assumptions = {
+      ...BASE_ASSUMPTIONS,
+      statePensionAge: 67,
+    };
+    // 2-year deferral → effective pension age = 69
+    const config: IncomeConfig = {
+      employmentIncomes: [],
+      statePensionConfig: { niQualifyingYears: 35, deferralYears: 2, enabled: true },
+      incomeStreams: [],
+    };
+
+    const points = projectSavings(input, assumptions, config);
+
+    // At age 67 (normal pension age) — should NOT have State Pension yet
+    expect(points.find((p) => p.age === 67)?.hasStatePension).toBe(false);
+    // At age 69 — should have State Pension
+    expect(points.find((p) => p.age === 69)?.hasStatePension).toBe(true);
+  });
+
+  it("reduces portfolio withdrawal by income stream amount during drawdown", () => {
+    const input: QuickStartInput = {
+      ...BASE_INPUT,
+      currentAge: 66,
+      retirementAge: 67,
+      lifeExpectancy: 68,
+      currentSavings: 200_000,
+      annualIncome: 60_000,
+    };
+    const assumptions: Assumptions = {
+      ...BASE_ASSUMPTIONS,
+      inflationRate: 0,
+      investmentReturn: 0,
+      annualContributionRate: 0,
+      statePensionAge: 99,
+      annualStatePension: 0,
+    };
+    const rentalStream: IncomeStream = {
+      id: "r1",
+      name: "Rental",
+      type: "rental",
+      annualAmount: 10_000,
+      startAge: 67,
+      endAge: null,
+      growthRate: 0,
+      enabled: true,
+    };
+    const config: IncomeConfig = {
+      employmentIncomes: [],
+      statePensionConfig: { niQualifyingYears: 35, deferralYears: 0, enabled: false },
+      incomeStreams: [rentalStream],
+    };
+
+    const points = projectSavings(input, assumptions, config);
+    // Without stream: withdrawal = 60,000 × (2/3) = 40,000 → balance = 160,000
+    // With £10,000 rental: withdrawal = max(0, 40,000 - 10,000) = 30,000 → balance = 170,000
+    expect(points.find((p) => p.age === 67)?.balance).toBeCloseTo(170_000);
+  });
+
+  it("behaves identically to the no-config path when incomeConfig is undefined", () => {
+    const pointsWithout = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS);
+    const pointsWith = projectSavings(BASE_INPUT, BASE_ASSUMPTIONS, undefined);
+    expect(pointsWith).toEqual(pointsWithout);
   });
 });

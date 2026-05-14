@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback } from "react";
-import type { Assumptions, Plan, QuickStartInput } from "@/types";
+import type {
+  Assumptions,
+  EmploymentIncome,
+  IncomeStream,
+  Plan,
+  QuickStartInput,
+  StatePensionConfig,
+} from "@/types";
 import { useLocalStorage } from "./useLocalStorage";
 import {
   createPlan,
@@ -14,6 +21,14 @@ import {
 const STORAGE_KEY = "financial-planner:plans";
 const ACTIVE_KEY = "financial-planner:activePlanId";
 
+export type UpdatePlanDataChanges = {
+  input?: QuickStartInput | null;
+  assumptions?: Assumptions;
+  employmentIncomes?: EmploymentIncome[];
+  statePensionConfig?: StatePensionConfig;
+  incomeStreams?: IncomeStream[];
+};
+
 export type UsePlansReturn = {
   plans: Plan[];
   activePlanId: string | null;
@@ -23,7 +38,7 @@ export type UsePlansReturn = {
   renamePlan: (id: string, name: string) => void;
   deletePlan: (id: string) => void;
   duplicateActivePlan: () => void;
-  updatePlanData: (id: string, changes: { input?: QuickStartInput | null; assumptions?: Assumptions }) => void;
+  updatePlanData: (id: string, changes: UpdatePlanDataChanges) => void;
 };
 
 function parsePlans(raw: string): Plan[] {
@@ -93,7 +108,7 @@ export function usePlans(): UsePlansReturn {
   }, [activePlan, plans, savePlans, setActivePlanId]);
 
   const updatePlanData = useCallback(
-    (id: string, changes: { input?: QuickStartInput | null; assumptions?: Assumptions }) => {
+    (id: string, changes: UpdatePlanDataChanges) => {
       savePlans(
         plans.map((p) => (p.id === id ? updatePlan(p, changes) : p)),
       );

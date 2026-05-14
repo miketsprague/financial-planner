@@ -1,4 +1,4 @@
-import type { Assumptions } from "@/types";
+import type { Assumptions, StatePensionConfig } from "@/types";
 
 /** UK-first default assumptions (2024/25 tax year values). */
 export const UK_DEFAULTS = {
@@ -12,3 +12,10 @@ export const UK_DEFAULTS = {
   incomeReplacementRatio: 2 / 3, // 66.7% of pre-retirement income default
   locale: "en-GB" as const,
 } satisfies Omit<Assumptions, never>;
+
+/** Default State Pension configuration — full 35 qualifying NI years, no deferral. */
+export const DEFAULT_STATE_PENSION_CONFIG: StatePensionConfig = {
+  niQualifyingYears: 35,
+  deferralYears: 0,
+  enabled: true,
+};
