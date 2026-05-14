@@ -1,0 +1,175 @@
+name: QA Bot
+
+# Automatically triggers the QA bot agent on every non-draft PR.
+# The bot builds the app, analyses the PR scope, runs Playwright tests,
+# and posts a structured bug report as a PR comment.
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: qa-bot-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  qa-bot:
+    name: QA Bot
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Build static site
+        run: npm run build
+        env:
+          PAGES_BASE_PATH: ""
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run existing Playwright tests
+        id: playwright
+        shell: bash
+        run: |
+          npx playwright test --config=playwright.config.ts 2>&1 | tee /tmp/playwright-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Post QA bot comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            // Read playwright output
+            let playwrightOutput = '';
+            try {
+              playwrightOutput = fs.readFileSync('/tmp/playwright-output.txt', 'utf8').trim();
+            } catch { /* file may not exist */ }
+
+            // Summarise playwright run
+            const playwrightExitCode = '${{ steps.playwright.outputs.exit_code }}';
+            const playwrightStatus = playwrightExitCode === '0' ? '✅ Passed' : '❌ Failed';
+
+            // Build the changed files list (max 20 entries)
+            let changedFilesSection = '';
+            try {
+              const { data: files } = await github.rest.pulls.listFiles({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                per_page: 100,
+              });
+              const relevant = files
+                .filter(f => !f.filename.startsWith('.github/screenshots'))
+                .map(f => `- \`${f.filename}\` (${f.status})`)
+                .slice(0, 20);
+              if (relevant.length > 0) {
+                changedFilesSection = `\n**Changed files (${files.length} total):**\n${relevant.join('\n')}`;
+                if (files.length > 20) changedFilesSection += `\n- … and ${files.length - 20} more`;
+              }
+            } catch { /* ignore — changed files are informational only */ }
+
+            const playwrightSection = playwrightOutput
+              ? `\n<details><summary>Playwright output</summary>\n\n\`\`\`\n${playwrightOutput.slice(-3000)}\n\`\`\`\n</details>`
+              : '';
+
+            const body = [
+              '## 🧪 QA Bot',
+              '',
+              `@copilot Please perform a full QA pass on this PR following the instructions in \`.github/agents/qa.agent.md\` and \`.github/prompts/qa-review.prompt.md\`.`,
+              '',
+              '---',
+              '',
+              `**PR:** #${pr.number} — ${pr.title}`,
+              `**Build:** ✅ Succeeded`,
+              `**Playwright baseline:** ${playwrightStatus}`,
+              changedFilesSection,
+              playwrightSection,
+              '',
+              '---',
+              '',
+              '### QA Instructions',
+              '',
+              '**Step 1 — Scope Analysis**',
+              'Review the changed files above. Identify every user-facing flow that may have changed. List them before running any tests.',
+              '',
+              '**Step 2 — Spec Review**',
+              'Read all relevant specs in `specs/`. For each acceptance criterion that relates to the changed flows, note whether it needs to be verified.',
+              '',
+              '**Step 3 — Test Plan**',
+              'Before testing, write out:',
+              '- All user flows to exercise (happy path + edge cases)',
+              '- All spec acceptance criteria to verify',
+              '- Any UX concerns or confusing interactions to investigate',
+              '',
+              '**Step 4 — Playwright Testing**',
+              'The app is already built. Serve it and run tests:',
+              '```bash',
+              'npx serve out -l 3000 &',
+              'npx playwright test --config=playwright.config.ts',
+              '```',
+              'Then write and run focused Playwright scripts for each flow in your test plan.',
+              '',
+              '**Always verify these baseline flows:**',
+              '- Quick Start form → submit → projection chart renders',
+              '- Edit inputs → modify value → resubmit → chart updates',
+              '- Assumptions slider → drag → chart re-renders immediately',
+              '- Plan: create, rename (Enter=confirm, Escape=cancel), duplicate, delete (two-step)',
+              '- Page reload → plan + inputs restored from localStorage',
+              '- Invalid inputs → inline validation errors shown',
+              '',
+              '**Step 5 — Report**',
+              'Post your findings in this comment thread using the bug report format from `.github/agents/qa.agent.md`.',
+              'If no bugs are found, post a short ✅ confirmation with the flows you tested.',
+              '',
+              '---',
+              `<sub>🤖 QA Bot triggered by [workflow run](${runUrl}) · Persona: \`.github/agents/qa.agent.md\`</sub>`,
+            ].filter(line => line !== null && line !== undefined).join('\n');
+
+            // Update existing QA comment or create a new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+            });
+
+            const existing = comments.find(c =>
+              c.user?.type === 'Bot' && c.body?.includes('🧪 QA Bot')
+            );
+
+            const params = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            };
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                ...params,
+                comment_id: existing.id,
+              });
+              core.info(`Updated existing QA comment #${existing.id}`);
+            } else {
+              await github.rest.issues.createComment({
+                ...params,
+                issue_number: pr.number,
+              });
+              core.info('Created new QA bot comment');
+            }

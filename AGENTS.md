@@ -112,7 +112,7 @@ User Input → React Component → Custom Hook → src/lib/ (pure calculation) �
 
 ### Multi-Agent Workflow
 ```
-Issue → Planner Agent (spec) → Implementer Agent (code + tests) → Critic + Security Agents (review) → Human approval → Merge
+Issue → Planner Agent (spec) → Implementer Agent (code + tests) → Critic + Security + QA Agents (review) → Human approval → Merge
 ```
 
 > **⚠️ Spec-First is Non-Negotiable**
@@ -132,6 +132,7 @@ Issue → Planner Agent (spec) → Implementer Agent (code + tests) → Critic +
 | Security Auditor | `.github/agents/security.agent.md` | OWASP/vulnerability review — read-only |
 | Docs Writer | `.github/agents/docs.agent.md` | Updates docs after code changes |
 | TDD Enforcer | `.github/agents/tdd.agent.md` | Failing test first, then implementation |
+| QA Bot | `.github/agents/qa.agent.md` | Browser testing with Playwright — reports bugs, does not fix them |
 
 When working in a specific mode, load the corresponding agent file for specialised instructions.
 
