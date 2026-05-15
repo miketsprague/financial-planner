@@ -54,7 +54,7 @@ This spec targets the Empower-style low-friction start, while building the archi
 9. A separate vertical reference line marks the **state pension age** when it differs from retirement age (purple).
 10. A status banner above the chart indicates whether funding is sufficient (balance > 0 at `lifeExpectancy`) or at risk.
 11. Hovering a data point shows age and formatted balance in a tooltip.
-12. A "Make this more accurate" CTA is displayed below the chart.
+12. A "Make this more accurate" CTA is displayed below the chart. Clicking it transitions the plan to **detailed income mode** — see `epic-2-income-streams.spec.md` (§2.1) for the transition behaviour, seeding rules, and detailed-mode projection semantics.
 
 ### 1.3 UK Default Assumptions
 
