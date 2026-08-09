@@ -1,15 +1,19 @@
 "use client";
 
 import { useMemo } from "react";
-import type { Assumptions, ProjectionDataPoint, QuickStartInput } from "@/types";
-import { projectSavings } from "@/lib/calculations";
+import type { MonteCarloResult, Plan, ProjectionPoint } from "@/types";
+import { projectPlan } from "@/lib/calculations";
+import { runMonteCarloSimulation } from "@/lib/monte-carlo";
 
-export function useProjection(
-  input: QuickStartInput | null,
-  assumptions: Assumptions,
-): ProjectionDataPoint[] {
-  return useMemo(() => {
-    if (!input) return [];
-    return projectSavings(input, assumptions);
-  }, [input, assumptions]);
+export type UseProjectionReturn = {
+  projection: ProjectionPoint[];
+  monteCarlo: MonteCarloResult;
+};
+
+/** Memoised deterministic projection and Monte Carlo simulation for a plan. */
+export function useProjection(plan: Plan): UseProjectionReturn {
+  const projection = useMemo(() => projectPlan(plan), [plan]);
+  const monteCarlo = useMemo(() => runMonteCarloSimulation(plan), [plan]);
+
+  return { projection, monteCarlo };
 }

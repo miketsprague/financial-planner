@@ -2,43 +2,48 @@ import { describe, it, expect } from "vitest";
 import {
   formatCurrency,
   formatCurrencyCompact,
+  formatDate,
   formatNumber,
   formatPercentage,
 } from "./formatting";
 
 describe("formatCurrency", () => {
-  it("formats GBP by default", () => {
-    expect(formatCurrency(1000)).toBe("£1,000");
+  it("formats GBP by default locale", () => {
+    expect(formatCurrency(1000, "GBP")).toBe("£1,000");
   });
 
-  it("formats USD for en-US locale", () => {
-    const result = formatCurrency(1000, "en-US");
+  it("formats USD", () => {
+    const result = formatCurrency(1000, "USD");
     expect(result).toContain("1,000");
     expect(result).toContain("$");
   });
 
   it("returns — for NaN", () => {
-    expect(formatCurrency(NaN)).toBe("—");
+    expect(formatCurrency(NaN, "GBP")).toBe("—");
   });
 
   it("returns — for Infinity", () => {
-    expect(formatCurrency(Infinity)).toBe("—");
+    expect(formatCurrency(Infinity, "GBP")).toBe("—");
   });
 
   it("handles zero", () => {
-    expect(formatCurrency(0)).toBe("£0");
+    expect(formatCurrency(0, "GBP")).toBe("£0");
+  });
+
+  it("respects maximumFractionDigits", () => {
+    expect(formatCurrency(1.256, "GBP", "en-GB", 2)).toBe("£1.26");
   });
 });
 
 describe("formatCurrencyCompact", () => {
   it("formats large GBP values in compact notation", () => {
-    const result = formatCurrencyCompact(1_200_000);
+    const result = formatCurrencyCompact(1_200_000, "GBP");
     expect(result).toMatch(/1\.2[mM]|1\.2 [mM]/);
     expect(result).toContain("£");
   });
 
   it("returns — for non-finite values", () => {
-    expect(formatCurrencyCompact(NaN)).toBe("—");
+    expect(formatCurrencyCompact(NaN, "GBP")).toBe("—");
   });
 });
 
@@ -67,5 +72,15 @@ describe("formatNumber", () => {
 
   it("returns — for Infinity", () => {
     expect(formatNumber(Infinity)).toBe("—");
+  });
+});
+
+describe("formatDate", () => {
+  it("formats a valid ISO date", () => {
+    expect(formatDate("2026-08-09T00:00:00.000Z")).toMatch(/2026/);
+  });
+
+  it("returns — for an invalid date string", () => {
+    expect(formatDate("not-a-date")).toBe("—");
   });
 });

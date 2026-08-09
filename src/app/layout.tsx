@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Financial Planner",
   description:
-    "Long-term financial planning with Monte Carlo simulation, inflation adjustment, and scenario comparison",
+    "US–UK cross-border personal financial planning with Monte Carlo simulation, inflation adjustment, and account-wrapper insights.",
 };
 
 export default function RootLayout({

@@ -1,132 +1,181 @@
 "use client";
 
-import { useEffect } from "react";
 import { getLocaleStrings } from "@/locales";
-import { UK_DEFAULTS } from "@/lib/defaults";
-import { useAssumptions } from "@/hooks/useAssumptions";
-import { usePlans } from "@/hooks/usePlans";
-import { QuickStartWizard } from "@/components/quick-start/QuickStartWizard";
-import { AssumptionsPanel } from "@/components/assumptions/AssumptionsPanel";
-import { PlanManager } from "@/components/plans/PlanManager";
-import type { QuickStartInput } from "@/types";
+import { usePlanState } from "@/hooks/usePlanState";
+import { useProjection } from "@/hooks/useProjection";
+import { computeAnnualSavings, computeNetWorth } from "@/lib/calculations";
+import { computeInsights } from "@/lib/insights";
+import {
+  DashboardMetrics,
+  getBalanceAtRetirement,
+} from "@/components/dashboard/DashboardMetrics";
+import { ProjectionChart } from "@/components/dashboard/ProjectionChart";
+import { InsightsPanel } from "@/components/dashboard/InsightsPanel";
+import { ProfileSection } from "@/components/profile/ProfileSection";
+import { CashFlowSection } from "@/components/cash-flow/CashFlowSection";
+import { AccountsSection } from "@/components/accounts/AccountsSection";
+import { GoalsSection } from "@/components/goals/GoalsSection";
+import { BenefitsSection } from "@/components/benefits/BenefitsSection";
+import { AssumptionsSection } from "@/components/assumptions/AssumptionsSection";
+import { CrossBorderGuide } from "@/components/guide/CrossBorderGuide";
+import { DataControls } from "@/components/data/DataControls";
+import { Disclaimer } from "@/components/layout/Disclaimer";
 
 const strings = getLocaleStrings("en-GB");
 
 export default function Home() {
-  const { assumptions, updateAssumption, setAssumptions, resetToDefaults } =
-    useAssumptions({ ...UK_DEFAULTS });
-
   const {
-    plans,
-    activePlan,
-    activePlanId,
-    createNewPlan,
-    selectPlan,
-    renamePlan,
-    deletePlan,
-    duplicateActivePlan,
-    updatePlanData,
-  } = usePlans();
+    plan,
+    updatePlan,
+    addAccount,
+    updateAccount,
+    removeAccount,
+    addGoal,
+    updateGoal,
+    removeGoal,
+    addBenefit,
+    updateBenefit,
+    removeBenefit,
+    exportPlanJson,
+    importPlanJson,
+    resetToExample,
+  } = usePlanState();
 
-  // Bootstrap first plan if none exist
-  useEffect(() => {
-    if (plans.length === 0) {
-      createNewPlan(strings.plans.defaultName);
-    }
-  }, [plans.length, createNewPlan]);
-
-  // Sync assumptions from active plan when switching plans
-  useEffect(() => {
-    if (activePlan) {
-      setAssumptions(activePlan.assumptions);
-    }
-  }, [activePlanId, setAssumptions]); // eslint-disable-line react-hooks/exhaustive-deps -- activePlan is derived from activePlanId; setAssumptions is stable
-
-  function handleInputSubmit(input: QuickStartInput) {
-    if (!activePlan) return;
-    const next = { ...assumptions, lifeExpectancy: input.lifeExpectancy };
-    setAssumptions(next);
-    updatePlanData(activePlan.id, { input, assumptions: next });
-  }
-
-  function handleAssumptionUpdate<K extends keyof typeof assumptions>(
-    key: K,
-    value: (typeof assumptions)[K],
-  ) {
-    updateAssumption(key, value);
-    if (activePlan) {
-      updatePlanData(activePlan.id, {
-        assumptions: { ...assumptions, [key]: value },
-      });
-    }
-  }
-
-  function handleResetAssumptions() {
-    resetToDefaults();
-    if (activePlan) {
-      updatePlanData(activePlan.id, { assumptions: { ...UK_DEFAULTS } });
-    }
-  }
+  const { projection, monteCarlo } = useProjection(plan);
+  const insights = computeInsights(plan, monteCarlo);
+  const netWorth = computeNetWorth(plan);
+  const annualSavings = computeAnnualSavings(plan);
+  const balanceAtRetirement = getBalanceAtRetirement(
+    projection,
+    plan.profile.retirementAge,
+  );
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      {/* Header */}
-      <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-6 py-4">
-        <div className="mx-auto max-w-6xl flex items-center justify-between">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-blue-600 focus:px-4 focus:py-2 focus:text-white"
+      >
+        {strings.skipToContent}
+      </a>
+
+      <header className="border-b border-zinc-200 bg-white px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
               {strings.appTitle}
             </h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
               {strings.appSubtitle}
             </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">
+              {strings.privacyBadge}
+            </span>
+            <span className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              {strings.educationalBadge}
+            </span>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
-          {/* Main projection area */}
-          <div className="flex flex-col gap-8">
-            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm">
-              <QuickStartWizard
-                strings={strings}
-                activePlanName={activePlan?.name ?? ""}
-                input={activePlan?.input ?? null}
-                assumptions={assumptions}
-                onInputSubmit={handleInputSubmit}
-              />
-            </div>
-          </div>
+      <main
+        id="main-content"
+        className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8"
+      >
+        <DashboardMetrics
+          strings={strings}
+          currency={plan.profile.reportingCurrency}
+          netWorth={netWorth}
+          annualSavings={annualSavings}
+          retirementAge={plan.profile.retirementAge}
+          successProbability={monteCarlo.successProbability}
+          balanceAtRetirement={balanceAtRetirement}
+        />
 
-          {/* Sidebar */}
-          <aside className="flex flex-col gap-6">
-            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
-              <PlanManager
-                strings={strings}
-                plans={plans}
-                activePlanId={activePlanId}
-                onSelect={(id) => {
-                  selectPlan(id);
-                }}
-                onRename={renamePlan}
-                onDuplicate={duplicateActivePlan}
-                onDelete={deletePlan}
-                onNew={() => createNewPlan(strings.plans.defaultName)}
-              />
-            </div>
+        <ProjectionChart
+          strings={strings}
+          currency={plan.profile.reportingCurrency}
+          projection={projection}
+          monteCarlo={monteCarlo}
+          currentAge={plan.profile.currentAge}
+          retirementAge={plan.profile.retirementAge}
+          inflationRate={plan.assumptions.inflationRate}
+        />
 
-            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
-              <AssumptionsPanel
-                strings={strings}
-                assumptions={assumptions}
-                onUpdate={handleAssumptionUpdate}
-                onReset={handleResetAssumptions}
-              />
-            </div>
-          </aside>
+        <InsightsPanel strings={strings} insights={insights} />
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ProfileSection
+            strings={strings}
+            profile={plan.profile}
+            onChange={(changes) =>
+              updatePlan((prev) => ({
+                ...prev,
+                profile: { ...prev.profile, ...changes },
+              }))
+            }
+          />
+          <CashFlowSection
+            strings={strings}
+            cashFlow={plan.cashFlow}
+            onChange={(changes) =>
+              updatePlan((prev) => ({
+                ...prev,
+                cashFlow: { ...prev.cashFlow, ...changes },
+              }))
+            }
+          />
         </div>
+
+        <AccountsSection
+          strings={strings}
+          accounts={plan.accounts}
+          onAdd={addAccount}
+          onUpdate={updateAccount}
+          onRemove={removeAccount}
+        />
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <GoalsSection
+            strings={strings}
+            goals={plan.goals}
+            onAdd={addGoal}
+            onUpdate={updateGoal}
+            onRemove={removeGoal}
+          />
+          <BenefitsSection
+            strings={strings}
+            benefits={plan.benefits}
+            onAdd={addBenefit}
+            onUpdate={updateBenefit}
+            onRemove={removeBenefit}
+          />
+        </div>
+
+        <AssumptionsSection
+          strings={strings}
+          assumptions={plan.assumptions}
+          onChange={(changes) =>
+            updatePlan((prev) => ({
+              ...prev,
+              assumptions: { ...prev.assumptions, ...changes },
+            }))
+          }
+        />
+
+        <CrossBorderGuide strings={strings} profile={plan.profile} />
+
+        <DataControls
+          strings={strings}
+          exportPlanJson={exportPlanJson}
+          importPlanJson={importPlanJson}
+          resetToExample={resetToExample}
+        />
       </main>
+
+      <Disclaimer strings={strings} />
     </div>
   );
 }
